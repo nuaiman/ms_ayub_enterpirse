@@ -1,0 +1,11 @@
+Users
+ ↓
+Customers
+ ↓
+Contracts
+ ↓
+Items
+ ↓
+Retrievals
+ ↓
+Deliveries
