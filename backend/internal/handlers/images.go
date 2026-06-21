@@ -76,7 +76,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			oldImagePath = "." + *user.ImageURL
 		}
 
-		basePath = filepath.Join("public", "users", strconv.FormatInt(id, 10))
+		basePath = filepath.Join("bucket", "users", strconv.FormatInt(id, 10))
 
 	case "items":
 		item, err := h.app.Models.Item.GetByID(r.Context(), id)
@@ -101,7 +101,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			oldImagePath = "." + *item.ImageURL
 		}
 
-		basePath = filepath.Join("public", "items", strconv.FormatInt(id, 10))
+		basePath = filepath.Join("bucket", "items", strconv.FormatInt(id, 10))
 
 	case "expenses":
 		expense, err := h.app.Models.Expense.GetByID(r.Context(), id)
@@ -126,7 +126,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			oldImagePath = "." + *expense.ImageURL
 		}
 
-		basePath = filepath.Join("public", "expenses", strconv.FormatInt(id, 10))
+		basePath = filepath.Join("bucket", "expenses", strconv.FormatInt(id, 10))
 
 	default:
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid type")

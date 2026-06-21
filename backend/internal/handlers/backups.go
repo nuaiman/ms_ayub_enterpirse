@@ -35,12 +35,12 @@ func (h *Handler) BackupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// backup public directory
-	if err := addDirectoryToZip(zipWriter, "./public", "public"); err != nil {
+	// backup bucket directory
+	if err := addDirectoryToZip(zipWriter, "./bucket", "bucket"); err != nil {
 		utils.ErrorJson(
 			w,
 			http.StatusInternalServerError,
-			"failed to backup public directory",
+			"failed to backup bucket directory",
 		)
 		return
 	}

@@ -5,6 +5,8 @@ import (
 	"backend/internal/handlers"
 	"backend/internal/middlewares"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,20 +22,36 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		AllowOriginFunc: func(r *http.Request, origin string) bool {
 			return true
 		},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"PATCH",
+			"DELETE",
+			"OPTIONS",
+		},
+		AllowedHeaders: []string{
+			"Accept",
+			"Authorization",
+			"Content-Type",
+			"X-CSRF-Token",
+		},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
-	limiter := middlewares.NewRateLimiter(app.Config.RateLimit, app.Config.RateInterval)
+	limiter := middlewares.NewRateLimiter(
+		app.Config.RateLimit,
+		app.Config.RateInterval,
+	)
+
 	r.Use(limiter.LimitRate)
 
-	fs := http.FileServer(http.Dir("./public"))
-	r.Handle("/public/*", http.StripPrefix("/public/", fs))
+	// ==========================================
+	// HELPERS
+	// ==========================================
 
-	// Helper functions
 	protected := func(h http.HandlerFunc) http.HandlerFunc {
 		return middlewares.Authenticate(app.Config.JWTKey, h)
 	}
@@ -46,106 +64,415 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 
 	higherManagementOnly := func(h http.HandlerFunc) http.HandlerFunc {
 		return protected(
-			middlewares.Authorize(app, "admin", "manager")(h),
+			middlewares.Authorize(
+				app,
+				"admin",
+				"manager",
+			)(h),
 		)
 	}
 
 	managementOnly := func(h http.HandlerFunc) http.HandlerFunc {
 		return protected(
-			middlewares.Authorize(app, "admin", "manager", "accounts")(h),
+			middlewares.Authorize(
+				app,
+				"admin",
+				"manager",
+				"accounts",
+			)(h),
 		)
 	}
 
+	// ==========================================
+	// API
+	// ==========================================
+
 	r.Route("/api", func(r chi.Router) {
+
 		r.Get("/health", handler.HealthCheckHandler)
 
+		// USERS
+
 		r.Route("/users", func(r chi.Router) {
-			// Public routes
+
 			r.Post("/login", handler.LoginHandler)
-			r.Post("/refresh-session", handler.RefreshHandler)
 
-			// Protected routes
-			r.Delete("/logout", protected(handler.LogoutHandler))
-			r.Get("/current-user", protected(handler.GetCurrentUserHandler))
-			r.Patch("/change-password", protected(handler.ChangePasswordHandler))
-			// r.Patch("/profile", protected(handler.UpdateProfileHandler))
-			r.Patch("/{id}/profile", higherManagementOnly(handler.UpdateUserProfileHandler))
+			r.Post(
+				"/refresh-session",
+				handler.RefreshHandler,
+			)
 
-			// Management routes
-			r.Get("/", higherManagementOnly(handler.GetAllUsersHandler))
-			r.Post("/", higherManagementOnly(handler.CreateUserHandler))
+			r.Delete(
+				"/logout",
+				protected(handler.LogoutHandler),
+			)
 
-			// Admin only routes
-			r.Patch("/reset-all-passwords", adminOnly(handler.ResetAllPasswordsHandler))
+			r.Get(
+				"/current-user",
+				protected(handler.GetCurrentUserHandler),
+			)
 
-			// Parameterized routes (must come after specific routes)
-			r.Get("/{id}", protected(handler.GetUserHandler))
-			r.Patch("/{id}/change-password", higherManagementOnly(handler.ChangeUserPasswordHandler))
-			r.Patch("/{id}/change-role", higherManagementOnly(handler.ChangeUserRoleHandler))
-			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleUserActiveHandler))
+			r.Patch(
+				"/change-password",
+				protected(handler.ChangePasswordHandler),
+			)
+
+			r.Patch(
+				"/{id}/profile",
+				higherManagementOnly(
+					handler.UpdateUserProfileHandler,
+				),
+			)
+
+			r.Get(
+				"/",
+				higherManagementOnly(
+					handler.GetAllUsersHandler,
+				),
+			)
+
+			r.Post(
+				"/",
+				higherManagementOnly(
+					handler.CreateUserHandler,
+				),
+			)
+
+			r.Patch(
+				"/reset-all-passwords",
+				adminOnly(
+					handler.ResetAllPasswordsHandler,
+				),
+			)
+
+			r.Get(
+				"/{id}",
+				protected(
+					handler.GetUserHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}/change-password",
+				higherManagementOnly(
+					handler.ChangeUserPasswordHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}/change-role",
+				higherManagementOnly(
+					handler.ChangeUserRoleHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}/toggle-active",
+				higherManagementOnly(
+					handler.ToggleUserActiveHandler,
+				),
+			)
 		})
+
+		// CUSTOMERS
 
 		r.Route("/customers", func(r chi.Router) {
-			// Management routes
-			r.Get("/", higherManagementOnly(handler.GetAllCustomersHandler))
-			r.Post("/", higherManagementOnly(handler.CreateCustomerHandler))
 
-			// Parameterized routes
-			r.Get("/{id}", protected(handler.GetCustomerHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerHandler))
+			r.Get(
+				"/",
+				higherManagementOnly(
+					handler.GetAllCustomersHandler,
+				),
+			)
+
+			r.Post(
+				"/",
+				higherManagementOnly(
+					handler.CreateCustomerHandler,
+				),
+			)
+
+			r.Get(
+				"/{id}",
+				protected(
+					handler.GetCustomerHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}",
+				higherManagementOnly(
+					handler.UpdateCustomerHandler,
+				),
+			)
+
+			r.Delete(
+				"/{id}",
+				higherManagementOnly(
+					handler.DeleteCustomerHandler,
+				),
+			)
 		})
+
+		// CONTRACTS
 
 		r.Route("/contracts", func(r chi.Router) {
-			// Management routes
-			r.Get("/", higherManagementOnly(handler.GetAllContractsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateContractHandler))
 
-			// Parameterized routes (must come after specific routes)
-			r.Get("/{id}", higherManagementOnly(handler.GetContractHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateContractHandler))
-			r.Patch("/{id}/status", higherManagementOnly(handler.ChangeContractStatusHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteContractHandler))
+			r.Get(
+				"/",
+				higherManagementOnly(
+					handler.GetAllContractsHandler,
+				),
+			)
+
+			r.Post(
+				"/",
+				higherManagementOnly(
+					handler.CreateContractHandler,
+				),
+			)
+
+			r.Get(
+				"/{id}",
+				higherManagementOnly(
+					handler.GetContractHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}",
+				higherManagementOnly(
+					handler.UpdateContractHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}/status",
+				higherManagementOnly(
+					handler.ChangeContractStatusHandler,
+				),
+			)
+
+			r.Delete(
+				"/{id}",
+				higherManagementOnly(
+					handler.DeleteContractHandler,
+				),
+			)
 		})
+
+		// ITEMS
 
 		r.Route("/items", func(r chi.Router) {
-			r.Get("/", protected(handler.GetAllItemsHandler))
-			r.Post("/", protected(handler.CreateItemHandler))
 
-			r.Get("/{id}", protected(handler.GetItemHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateItemHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteItemHandler))
+			r.Get(
+				"/",
+				protected(
+					handler.GetAllItemsHandler,
+				),
+			)
+
+			r.Post(
+				"/",
+				protected(
+					handler.CreateItemHandler,
+				),
+			)
+
+			r.Get(
+				"/{id}",
+				protected(
+					handler.GetItemHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}",
+				higherManagementOnly(
+					handler.UpdateItemHandler,
+				),
+			)
+
+			r.Delete(
+				"/{id}",
+				higherManagementOnly(
+					handler.DeleteItemHandler,
+				),
+			)
 		})
+
+		// SHIPMENTS
 
 		r.Route("/shipments", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllShipmentsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateShipmentHandler))
 
-			r.Get("/{id}", higherManagementOnly(handler.GetShipmentHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateShipmentHandler))
-			r.Patch("/{id}/status", higherManagementOnly(handler.ChangeShipmentStatusHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteShipmentHandler))
+			r.Get(
+				"/",
+				higherManagementOnly(
+					handler.GetAllShipmentsHandler,
+				),
+			)
+
+			r.Post(
+				"/",
+				higherManagementOnly(
+					handler.CreateShipmentHandler,
+				),
+			)
+
+			r.Get(
+				"/{id}",
+				higherManagementOnly(
+					handler.GetShipmentHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}",
+				higherManagementOnly(
+					handler.UpdateShipmentHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}/status",
+				higherManagementOnly(
+					handler.ChangeShipmentStatusHandler,
+				),
+			)
+
+			r.Delete(
+				"/{id}",
+				higherManagementOnly(
+					handler.DeleteShipmentHandler,
+				),
+			)
 		})
+
+		// EXPENSES
 
 		r.Route("/expenses", func(r chi.Router) {
-			r.Get("/", managementOnly(handler.GetAllExpensesHandler))
-			r.Post("/", managementOnly(handler.CreateExpenseHandler))
 
-			r.Get("/{id}", managementOnly(handler.GetExpenseHandler))
-			r.Patch("/{id}", managementOnly(handler.UpdateExpenseHandler))
-			r.Delete("/{id}", managementOnly(handler.DeleteExpenseHandler))
+			r.Get(
+				"/",
+				managementOnly(
+					handler.GetAllExpensesHandler,
+				),
+			)
+
+			r.Post(
+				"/",
+				managementOnly(
+					handler.CreateExpenseHandler,
+				),
+			)
+
+			r.Get(
+				"/{id}",
+				managementOnly(
+					handler.GetExpenseHandler,
+				),
+			)
+
+			r.Patch(
+				"/{id}",
+				managementOnly(
+					handler.UpdateExpenseHandler,
+				),
+			)
+
+			r.Delete(
+				"/{id}",
+				managementOnly(
+					handler.DeleteExpenseHandler,
+				),
+			)
 		})
+
+		// LOGS
 
 		r.Route("/logs", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllLogsHandler))
+
+			r.Get(
+				"/",
+				higherManagementOnly(
+					handler.GetAllLogsHandler,
+				),
+			)
 		})
+
+		// IMAGES
 
 		r.Route("/images", func(r chi.Router) {
-			r.Post("/{type}/{id}", protected(handler.UploadImageHandler))
-			r.Delete("/{type}/{id}", protected(handler.DeleteImageHandler))
+
+			r.Post(
+				"/{type}/{id}",
+				protected(
+					handler.UploadImageHandler,
+				),
+			)
+
+			r.Delete(
+				"/{type}/{id}",
+				protected(
+					handler.DeleteImageHandler,
+				),
+			)
 		})
 
-		r.Get("/backup", adminOnly(handler.BackupHandler))
+		r.Get(
+			"/backup",
+			adminOnly(
+				handler.BackupHandler,
+			),
+		)
+	})
+
+	// ==========================================
+	// SERVE UPLOADED FILES FROM BUCKET
+	// ==========================================
+
+	r.Handle(
+		"/bucket/*",
+		http.StripPrefix(
+			"/bucket/",
+			http.FileServer(
+				http.Dir("./bucket"),
+			),
+		),
+	)
+
+	// ==========================================
+	// VUE SPA
+	// ==========================================
+
+	publicDir := "./public"
+	staticFS := http.FileServer(http.Dir(publicDir))
+
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+
+		// Never intercept API routes
+
+		if strings.HasPrefix(r.URL.Path, "/api") {
+			http.NotFound(w, r)
+			return
+		}
+
+		path := publicDir + r.URL.Path
+
+		// Serve actual files
+
+		if _, err := os.Stat(path); err == nil {
+			staticFS.ServeHTTP(w, r)
+			return
+		}
+
+		// Vue Router
+
+		http.ServeFile(
+			w,
+			r,
+			publicDir+"/index.html",
+		)
 	})
 
 	return r

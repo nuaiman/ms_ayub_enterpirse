@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 cmd = "go build -o ./tmp/main.exe ./cmd/"
 bin = "tmp/main.exe"
 include_ext = ["go"]
-exclude_dir = ["tmp", "data", "public"]
+exclude_dir = ["tmp", "data", "public", "bucket"]
 
 [log]
 time = true
