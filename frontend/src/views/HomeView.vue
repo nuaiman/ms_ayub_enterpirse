@@ -105,7 +105,7 @@ const allTabs = [
   { key: 'items', label: 'Items', roles: ['admin', 'manager', 'staff'] },
   { key: 'shipments', label: 'Shipments', roles: ['admin', 'manager'] },
   { key: 'divider1', label: '', divider: true, roles: ['admin', 'manager'] },
-  { key: 'expenses', label: 'Expenses', roles: ['admin', 'accounts'] },
+  { key: 'expenses', label: 'Expenses', roles: ['admin', 'manager', 'accounts'] },
   { key: 'users', label: 'Users', roles: ['admin', 'manager'] },
   { key: 'divider2', label: '', divider: true, roles: ['admin'] },
   { key: 'audit', label: 'Audits', roles: ['admin'] },
