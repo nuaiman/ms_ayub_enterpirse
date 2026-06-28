@@ -197,10 +197,13 @@
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-primary">Weight (kg)</label>
-              <input v-model.number="weight" type="number" step="0.001" min="0" placeholder="0.000"
-                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
-            </div>
+  <label class="text-sm font-medium text-primary">Weight per Item (kg)</label>
+  <input v-model.number="weight" type="number" step="0.001" min="0" placeholder="0.000"
+    class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+  <p v-if="weight && quantity > 1" class="text-xs text-muted mt-1">
+    Total weight: <span class="font-medium text-primary">{{ (weight * quantity).toFixed(3) }} kg</span>
+  </p>
+</div>
           </div>
         </div>
 
@@ -211,17 +214,17 @@
           </h3>
           <div class="grid grid-cols-3 gap-4">
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-primary">Length</label>
+              <label class="text-sm font-medium text-primary">Length (in)</label>
               <input v-model.number="length" type="number" step="0.01" min="0" placeholder="0.00"
                 class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
             </div>
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-primary">Width</label>
+              <label class="text-sm font-medium text-primary">Width (in)</label>
               <input v-model.number="width" type="number" step="0.01" min="0" placeholder="0.00"
                 class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
             </div>
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-primary">Height</label>
+              <label class="text-sm font-medium text-primary">Height (in)</label>
               <input v-model.number="height" type="number" step="0.01" min="0" placeholder="0.00"
                 class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
             </div>
