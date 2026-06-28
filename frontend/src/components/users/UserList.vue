@@ -10,7 +10,7 @@
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
-        <div class="relative flex-1 sm:flex-none">
+        <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" stroke="currentColor"
             viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -18,6 +18,16 @@
           </svg>
           <input v-model="searchQuery" type="text" placeholder="Search users..."
             class="input w-full sm:w-64 pl-9 pr-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-transparent placeholder:text-muted" />
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <div class="flex items-center gap-2">
@@ -67,7 +77,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
             </svg>
-            <span class="hidden sm:inline">Create User</span>
+            <span class="hidden sm:inline">Create</span>
           </button>
         </div>
       </div>
@@ -75,61 +85,64 @@
 
     <div v-if="showSortMenu" class="fixed inset-0 z-40" @click="showSortMenu = false"></div>
 
-    <!-- TABLE HEADER -->
-    <div
-      class="grid grid-cols-12 items-center py-3 px-3 border-b border-divider text-xs font-semibold text-muted uppercase tracking-wider shrink-0 bg-surface-alt rounded-t-lg">
-      <div class="col-span-3 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
-        @click="toggleSort('name')">
-        Name
-        <svg v-if="sortField === 'name'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'desc' }"
-          fill="currentColor" viewBox="0 0 24 24">
-          <path d="M7 10l5 5 5-5z" />
-        </svg>
-      </div>
-      <div class="col-span-2">Role</div>
-      <div class="col-span-2">Status</div>
-      <div class="col-span-3 cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
-        @click="toggleSort('created_at')">
-        Created
-        <svg v-if="sortField === 'created_at'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'desc' }"
-          fill="currentColor" viewBox="0 0 24 24">
-          <path d="M7 10l5 5 5-5z" />
-        </svg>
-      </div>
-      <div class="col-span-2 text-right pr-0.5">Actions</div>
-    </div>
-
-    <!-- LOADING -->
-    <div v-if="loading" class="flex-1 flex items-center justify-center">
-      <div class="text-center space-y-4">
-        <svg class="animate-spin w-10 h-10 text-accent mx-auto" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-        </svg>
-        <p class="text-sm text-muted">Loading users...</p>
-      </div>
-    </div>
-
-    <!-- EMPTY -->
-    <div v-else-if="filteredUsers.length === 0" class="flex-1 flex items-center justify-center">
-      <div class="text-center space-y-3">
-        <div class="w-16 h-16 mx-auto rounded-full bg-surface-alt flex items-center justify-center">
-          <svg class="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
+    <!-- TABLE -->
+    <div class="flex-1 min-h-0 overflow-auto">
+      <div class="min-w-[768px]">
+        <!-- TABLE HEADER -->
+        <div
+          class="grid grid-cols-12 items-center py-3 px-3 border-b border-divider text-xs font-semibold text-muted uppercase tracking-wider shrink-0 bg-surface-alt rounded-t-lg">
+          <div class="col-span-3 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+            @click="toggleSort('name')">
+            Name
+            <svg v-if="sortField === 'name'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'desc' }"
+              fill="currentColor" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
+          </div>
+          <div class="col-span-2">Role</div>
+          <div class="col-span-2">Status</div>
+          <div class="col-span-3 cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
+            @click="toggleSort('created_at')">
+            Created
+            <svg v-if="sortField === 'created_at'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'desc' }"
+              fill="currentColor" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
+          </div>
+          <div class="col-span-2 text-right pr-0.5">Actions</div>
         </div>
-        <p class="text-sm font-medium text-primary">No users found</p>
-        <p class="text-xs text-muted mt-1">{{ searchQuery ? 'adjust your search' : 'create new user' }}</p>
-      </div>
-    </div>
 
-    <!-- USER LIST -->
-    <div v-else class="flex-1 min-h-0 overflow-auto">
-      <div class="min-w-max">
-        <UserRow v-for="user in filteredUsers" :key="user.id" :user="user" @user-updated="handleUserUpdated"
-          @view-user="openDetailDialog" />
+        <!-- LOADING -->
+        <div v-if="loading" class="flex items-center justify-center py-12">
+          <div class="text-center space-y-4">
+            <svg class="animate-spin w-10 h-10 text-accent mx-auto" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <p class="text-sm text-muted">Loading users...</p>
+          </div>
+        </div>
+
+        <!-- EMPTY -->
+        <div v-else-if="filteredUsers.length === 0" class="flex items-center justify-center py-12">
+          <div class="text-center space-y-3">
+            <div class="w-16 h-16 mx-auto rounded-full bg-surface-alt flex items-center justify-center">
+              <svg class="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-primary">No users found</p>
+            <p class="text-xs text-muted mt-1">{{ searchQuery ? 'adjust your search' : 'create new user' }}</p>
+          </div>
+        </div>
+
+        <!-- USER LIST -->
+        <div v-else>
+          <UserRow v-for="user in filteredUsers" :key="user.id" :user="user" @user-updated="handleUserUpdated"
+            @view-user="openDetailDialog" />
+        </div>
       </div>
     </div>
 
@@ -347,7 +360,11 @@ const filteredUsers = computed(() => {
       u.name.toLowerCase().includes(query) ||
       u.username.toLowerCase().includes(query) ||
       (u.email && u.email.toLowerCase().includes(query)) ||
-      u.role.toLowerCase().includes(query)
+      u.role.toLowerCase().includes(query) ||
+      u.phone?.toLowerCase().includes(query) ||
+      u.address?.toLowerCase().includes(query) ||
+      u.id_type?.toLowerCase().includes(query) ||
+      u.id_number?.toLowerCase().includes(query)
     )
   }
   result.sort((a, b) => {

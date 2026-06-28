@@ -29,7 +29,7 @@
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Amount <span class="text-warning-text">*</span></label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
               <input v-model.number="amount" type="number" step="0.01" min="0" placeholder="0.00" required
                 class="input w-full pl-7 pr-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
             </div>

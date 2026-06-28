@@ -8,25 +8,27 @@
     <div class="card rounded-2xl shadow-sm p-6">
       <form @submit.prevent="submit" class="space-y-6">
 
-        <!-- Contract Selection - TOP (only for admin/manager) -->
-        <div v-if="canAssignContract" class="pb-6 border-b border-divider">
+        <!-- Customer Selection (Admin/Manager only) -->
+        <div v-if="canManageCustomers" class="pb-6 border-b border-divider">
           <h3 class="text-sm font-semibold text-muted uppercase tracking-wider mb-4">
-            Contract <span class="text-xs font-normal text-muted normal-case">(Optional)</span>
+            Customer <span class="text-xs font-normal text-muted normal-case">(Optional)</span>
           </h3>
 
-          <!-- Selected Contract -->
-          <div v-if="selectedContract"
-            class="flex items-center gap-3 p-3 rounded-lg border border-success-border bg-success-bg">
-            <div
-              class="w-10 h-10 rounded-full bg-surface-alt border border-default flex items-center justify-center shrink-0">
-              <span class="text-sm font-semibold text-muted">#{{ selectedContract.id }}</span>
+          <!-- Selected Customer -->
+          <div v-if="selectedCustomer"
+            class="flex items-start gap-4 p-4 rounded-xl border border-success-border bg-success-bg">
+            <div class="shrink-0 w-14 h-14 rounded-full bg-surface-alt border border-default flex items-center justify-center">
+              <span class="text-lg font-semibold text-muted">#{{ selectedCustomer.id }}</span>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-primary">Contract #{{ selectedContract.id }}</p>
-              <p class="text-xs text-secondary">Customer #{{ selectedContract.customer_id }} · <span
-                  class="capitalize">{{ selectedContract.status }}</span></p>
+              <p class="text-sm font-semibold text-primary">{{ selectedCustomer.name }}</p>
+              <div class="flex items-center gap-3 mt-1 flex-wrap">
+                <span class="text-xs text-secondary">{{ selectedCustomer.phone }}</span>
+                <span v-if="selectedCustomer.email" class="text-xs text-muted">{{ selectedCustomer.email }}</span>
+                <span v-if="selectedCustomer.company" class="text-xs text-muted">· {{ selectedCustomer.company }}</span>
+              </div>
             </div>
-            <button @click="clearSelectedContract" type="button"
+            <button @click="clearSelectedCustomer" type="button"
               class="shrink-0 text-muted hover:text-warning-text transition-colors p-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -34,7 +36,7 @@
             </button>
           </div>
 
-          <!-- Search (when no contract selected) -->
+          <!-- Search (when no customer selected) -->
           <div v-else class="relative">
             <div class="relative">
               <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none"
@@ -42,10 +44,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input v-model="contractSearch" type="text" placeholder="Search contracts by ID, customer, or status..."
-                @focus="showContractDropdown = true" @keydown.escape="showContractDropdown = false"
+              <input ref="customerSearchRef" v-model="customerSearch" type="text"
+                placeholder="Search customers by name, phone, email, company..." @focus="showCustomerDropdown = true"
+                @keydown.escape="showCustomerDropdown = false"
                 class="input w-full pl-9 pr-8 py-2.5 rounded-lg text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
-              <button v-if="contractSearch" @click="contractSearch = ''" type="button"
+              <button v-if="customerSearch" @click="customerSearch = ''" type="button"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -54,42 +57,31 @@
             </div>
 
             <!-- Dropdown -->
-            <div v-if="showContractDropdown"
+            <div v-if="showCustomerDropdown"
               class="absolute z-50 left-0 right-0 mt-1 border border-default rounded-xl shadow-lg overflow-hidden bg-surface">
-              <div class="px-3 py-2 border-b border-divider">
-                <button @click="openQuickAddContract" type="button"
-                  class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium text-accent hover:bg-accent/5 transition-colors">
-                  <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
-                    </svg>
-                  </div>
-                  <span>Create New Contract</span>
-                </button>
-              </div>
-              <div class="max-h-48 overflow-y-auto">
-                <div v-if="filteredContracts.length === 0" class="px-4 py-6 text-center">
+              <div class="max-h-56 overflow-y-auto">
+                <div v-if="filteredCustomers.length === 0" class="px-4 py-6 text-center">
                   <div class="w-10 h-10 mx-auto rounded-full bg-surface-alt flex items-center justify-center mb-2">
                     <svg class="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <p class="text-sm text-muted">No contracts match "{{ contractSearch }}"</p>
+                  <p class="text-sm text-muted">No customers match "{{ customerSearch }}"</p>
                 </div>
-                <button v-for="c in filteredContracts" :key="c.id" @click="selectContract(c)" type="button"
+                <button v-for="c in filteredCustomers" :key="c.id" @click="selectCustomer(c)" type="button"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-alt transition-colors text-left border-b border-divider last:border-b-0">
-                  <div
-                    class="w-9 h-9 rounded-full bg-surface-alt border border-default flex items-center justify-center shrink-0">
-                    <span class="text-xs font-semibold text-muted">#{{ c.id }}</span>
+                  <div class="shrink-0">
+                    <div class="w-9 h-9 rounded-full bg-surface-alt border border-default flex items-center justify-center">
+                      <span class="text-xs font-semibold text-muted">#{{ c.id }}</span>
+                    </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-primary">Contract #{{ c.id }}</p>
+                    <p class="text-sm font-medium text-primary truncate">{{ c.name }}</p>
                     <div class="flex items-center gap-2 mt-0.5">
-                      <span class="text-xs text-muted">Customer #{{ c.customer_id }}</span>
-                      <span class="text-[10px] px-1.5 py-0.5 rounded-full border"
-                        :class="c.status === 'active' ? 'status-success' : c.status === 'completed' ? 'status-info' : 'status-warning'">{{
-                        c.status }}</span>
+                      <span class="text-xs text-muted">{{ c.phone }}</span>
+                      <span v-if="c.email" class="text-[10px] text-muted bg-surface-alt px-1.5 py-0.5 rounded">{{ c.email }}</span>
+                      <span v-if="c.company" class="text-[10px] text-muted bg-surface-alt px-1.5 py-0.5 rounded">{{ c.company }}</span>
                     </div>
                   </div>
                   <svg class="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,12 +89,66 @@
                   </svg>
                 </button>
               </div>
+
+              <!-- Footer with count -->
               <div class="px-4 py-2 border-t border-divider bg-surface-alt">
-                <p class="text-[11px] text-muted">{{ filteredContracts.length }} contract{{ filteredContracts.length !==
-                  1 ? 's' : '' }} found</p>
+                <p class="text-[11px] text-muted">{{ filteredCustomers.length }} customer{{ filteredCustomers.length !== 1 ? 's' : '' }} found</p>
               </div>
             </div>
-            <div v-if="showContractDropdown" class="fixed inset-0 z-40" @click="showContractDropdown = false"></div>
+
+            <!-- Backdrop -->
+            <div v-if="showCustomerDropdown" class="fixed inset-0 z-40" @click="showCustomerDropdown = false"></div>
+          </div>
+        </div>
+
+        <!-- Contract Details (Admin/Manager only) -->
+        <div v-if="canManageCustomers" class="pb-6 border-b border-divider">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-muted uppercase tracking-wider">
+              Contract Details <span class="text-xs font-normal normal-case">(Optional)</span>
+            </h3>
+            <button type="button" @click="showContract = !showContract"
+              class="text-sm text-accent hover:text-accent/80 transition-colors">
+              {{ showContract ? 'Hide' : 'Add Contract' }}
+            </button>
+          </div>
+
+          <div v-if="showContract" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Duration Type</label>
+              <select v-model="duration_type"
+                class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                <option value="">Select Type</option>
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Duration</label>
+              <input v-model.number="duration" type="number" min="1" placeholder="Duration"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Price</label>
+              <input v-model.number="price" type="number" step="0.01" placeholder="0.00"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Security Deposit</label>
+              <input v-model.number="security_deposit" type="number" step="0.01" placeholder="0.00"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Estimated Value</label>
+              <input v-model.number="estimated_value" type="number" step="0.01" placeholder="0.00"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
           </div>
         </div>
 
@@ -141,12 +187,12 @@
               <label class="text-sm font-medium text-primary">Unit</label>
               <select v-model="quantity_unit"
                 class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
-                <option value="pcs" class="bg-surface text-primary">pcs</option>
-                <option value="g" class="bg-surface text-primary">g</option>
-                <option value="kg" class="bg-surface text-primary">kg</option>
-                <option value="ton" class="bg-surface text-primary">ton</option>
-                <option value="ml" class="bg-surface text-primary">ml</option>
-                <option value="liter" class="bg-surface text-primary">liter</option>
+                <option value="pcs">pcs</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ton">ton</option>
+                <option value="ml">ml</option>
+                <option value="liter">liter</option>
               </select>
             </div>
 
@@ -252,34 +298,48 @@
         </div>
       </form>
     </div>
-
-    <BaseDialog v-if="canAssignContract" v-model="showQuickAddContract" size="lg">
-      <CreateContractForm @contract-created="handleContractAdded" />
-    </BaseDialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { QuantityUnit } from '@/types/item'
-import type { Contract } from '@/types/contract'
+import type { QuantityUnit, DurationType, CreateItemPayload } from '@/types/item'
+import type { Customer } from '@/types/customer'
 import { useItemsStore } from '@/stores/items'
-import { useContractsStore } from '@/stores/contracts'
+import { useCustomersStore } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
 import { uploadImage } from '@/utils/image'
-import BaseDialog from '@/components/ui/BaseDialog.vue'
-import CreateContractForm from '@/components/contracts/CreateContractForm.vue'
 import { push } from 'notivue'
 
 const emit = defineEmits<{ 'item-created': [] }>()
 
 const itemsStore = useItemsStore()
-const contractsStore = useContractsStore()
-const auth = useAuthStore()
+const customersStore = useCustomersStore()
+const authStore = useAuthStore()
 
-const canAssignContract = computed(() => auth.user?.role === 'admin' || auth.user?.role === 'manager')
+// Check if user can manage customers (admin or manager)
+const canManageCustomers = computed(() => {
+  const role = authStore.user?.role
+  return role === 'admin' || role === 'manager'
+})
 
 const submitting = ref(false)
+
+// Customer fields
+const customerSearchRef = ref<HTMLInputElement | null>(null)
+const customerSearch = ref('')
+const showCustomerDropdown = ref(false)
+const selectedCustomer = ref<Customer | null>(null)
+
+// Contract fields
+const showContract = ref(false)
+const duration_type = ref<DurationType | null>(null)
+const duration = ref<number | null>(null)
+const price = ref<number | null>(null)
+const security_deposit = ref<number | null>(null)
+const estimated_value = ref<number | null>(null)
+
+// Item fields
 const name = ref('')
 const quantity = ref(1)
 const quantity_unit = ref<QuantityUnit>('pcs')
@@ -289,63 +349,41 @@ const width = ref<number | null>(null)
 const height = ref<number | null>(null)
 const notes = ref('')
 
+// Image fields
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const uploadError = ref<string | null>(null)
 
-const contractSearch = ref('')
-const showContractDropdown = ref(false)
-const selectedContract = ref<Contract | null>(null)
-const showQuickAddContract = ref(false)
-const contracts = ref<Contract[]>([])
-
-onMounted(async () => {
-  if (canAssignContract.value) {
-    await contractsStore.fetchContracts()
-    contracts.value = contractsStore.contracts
-  }
-})
-
-const filteredContracts = computed(() => {
-  if (!contractSearch.value) return contracts.value
-  const q = contractSearch.value.toLowerCase()
-  return contracts.value.filter(c =>
-    String(c.id).includes(q) ||
-    String(c.customer_id).includes(q) ||
-    c.status.toLowerCase().includes(q)
+const filteredCustomers = computed(() => {
+  if (!customerSearch.value) return customersStore.customers
+  const q = customerSearch.value.toLowerCase()
+  return customersStore.customers.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    c.phone.includes(q) ||
+    (c.email && c.email.toLowerCase().includes(q)) ||
+    (c.company && c.company.toLowerCase().includes(q))
   )
 })
 
-const selectContract = (c: Contract) => {
-  selectedContract.value = c
-  contractSearch.value = ''
-  showContractDropdown.value = false
+const selectCustomer = (c: Customer) => {
+  selectedCustomer.value = c
+  customerSearch.value = ''
+  showCustomerDropdown.value = false
 }
 
-const clearSelectedContract = () => {
-  selectedContract.value = null
-  contractSearch.value = ''
+const clearSelectedCustomer = () => {
+  selectedCustomer.value = null
+  customerSearch.value = ''
 }
 
-const openQuickAddContract = () => {
-  showContractDropdown.value = false
-  showQuickAddContract.value = true
-}
-
-const handleContractAdded = async () => {
-  showQuickAddContract.value = false
-  await contractsStore.fetchContracts()
-  contracts.value = contractsStore.contracts
-  if (contracts.value.length > 0) {
-    const last = contracts.value[0]
-    if (last) {
-      selectedContract.value = last
-      push.success('Contract added and selected')
-    }
+onMounted(async () => {
+  // Only fetch customers if user can manage them
+  if (canManageCustomers.value && customersStore.customers.length === 0) {
+    await customersStore.fetchCustomers()
   }
-}
+})
 
 const handleFileSelect = (event: Event) => {
   const input = event.target as HTMLInputElement
@@ -378,7 +416,13 @@ const resetForm = () => {
   width.value = null
   height.value = null
   notes.value = ''
-  clearSelectedContract()
+  showContract.value = false
+  duration_type.value = null
+  duration.value = null
+  price.value = null
+  security_deposit.value = null
+  estimated_value.value = null
+  clearSelectedCustomer()
   removeImage()
 }
 
@@ -387,17 +431,32 @@ const submit = async () => {
   submitting.value = true
 
   try {
-    const newItem = await itemsStore.createItem({
+    const payload: CreateItemPayload = {
       name: name.value,
       quantity_unit: quantity_unit.value,
       quantity: quantity.value,
-      weight: weight.value,
-      contract_id: selectedContract.value?.id ?? null,
-      length: length.value,
-      width: width.value,
-      height: height.value,
+      weight: weight.value || null,
+      length: length.value || null,
+      width: width.value || null,
+      height: height.value || null,
       notes: notes.value || null,
-    })
+    }
+
+    // Only include customer_id and contract fields if user has permission
+    if (canManageCustomers.value) {
+      payload.customer_id = selectedCustomer.value?.id || null
+
+      // Add contract fields if contract section is shown and has values
+      if (showContract.value && duration_type.value) {
+        payload.duration_type = duration_type.value
+        payload.duration = duration.value || null
+        payload.price = price.value || null
+        payload.security_deposit = security_deposit.value || null
+        payload.estimated_value = estimated_value.value || null
+      }
+    }
+
+    const newItem = await itemsStore.createItem(payload)
 
     if (!newItem) { submitting.value = false; return }
 

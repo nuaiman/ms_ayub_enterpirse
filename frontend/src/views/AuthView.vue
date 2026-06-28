@@ -83,9 +83,20 @@
       </div>
 
       <!-- Footer -->
-      <p class="text-center text-xs text-muted mt-6">
-        &copy; {{ new Date().getFullYear() }} MS Ayub Enterprise. All rights reserved.
-      </p>
+      <div class="mt-6 text-center space-y-3">
+        <p class="text-xs text-muted">
+          &copy; {{ new Date().getFullYear() }} MS Ayub Enterprise. All rights reserved.
+        </p>
+        <div class="flex items-center justify-center gap-1 text-xs text-muted">
+          <span>Powered by</span>
+          <router-link
+            to="/support"
+            class="text-accent hover:text-accent/80 transition-colors font-medium"
+          >
+            Boiddutik
+          </router-link>
+        </div>
+      </div>
     </div>
   </div>
 </template>

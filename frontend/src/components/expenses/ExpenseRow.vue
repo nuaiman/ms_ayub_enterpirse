@@ -30,7 +30,7 @@
     </div>
 
     <div class="col-span-2">
-      <span class="text-sm font-semibold text-warning-text">${{ expense.amount.toFixed(2) }}</span>
+      <span class="text-sm font-semibold text-warning-text">৳{{ expense.amount.toFixed(2) }}</span>
     </div>
 
     <div class="col-span-3">
@@ -119,7 +119,7 @@
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Amount</label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
               <input v-model.number="editForm.amount" type="number" step="0.01" min="0"
                 class="input w-full pl-7 pr-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
             </div>
@@ -194,7 +194,7 @@
           </div>
           <div>
             <h2 class="text-lg font-semibold text-primary">Delete Expense</h2>
-            <p class="text-xs text-muted">${{ expense.amount.toFixed(2) }}</p>
+            <p class="text-xs text-muted">৳{{ expense.amount.toFixed(2) }}</p>
           </div>
         </div>
         <p class="text-sm text-secondary">Delete <strong>{{ expense.title }}</strong>?</p>

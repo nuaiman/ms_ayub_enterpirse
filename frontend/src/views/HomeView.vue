@@ -28,10 +28,6 @@
             <CustomerList />
           </section>
 
-          <section v-else-if="activeTab === 'contracts'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
-            <ContractList />
-          </section>
-
           <section v-else-if="activeTab === 'items'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
             <ItemList />
           </section>
@@ -85,7 +81,6 @@ import AppTabs from '@/components/ui/AppTabs.vue'
 
 import UserList from '@/components/users/UserList.vue'
 import CustomerList from '@/components/customers/CustomerList.vue'
-import ContractList from '@/components/contracts/ContractList.vue'
 import ItemList from '@/components/items/ItemList.vue'
 import ShipmentList from '@/components/shipments/ShipmentList.vue'
 import ExpenseList from '@/components/expenses/ExpenseList.vue'
@@ -101,14 +96,13 @@ const formattedActiveTab = computed(() =>
 
 const allTabs = [
   { key: 'customers', label: 'Customers', roles: ['admin', 'manager'] },
-  { key: 'contracts', label: 'Contracts', roles: ['admin', 'manager'] },
   { key: 'items', label: 'Items', roles: ['admin', 'manager', 'staff'] },
   { key: 'shipments', label: 'Shipments', roles: ['admin', 'manager'] },
   { key: 'divider1', label: '', divider: true, roles: ['admin', 'manager'] },
   { key: 'expenses', label: 'Expenses', roles: ['admin', 'manager', 'accounts'] },
   { key: 'users', label: 'Users', roles: ['admin', 'manager'] },
-  { key: 'divider2', label: '', divider: true, roles: ['admin'] },
-  { key: 'audit', label: 'Audits', roles: ['admin'] },
+  { key: 'divider2', label: '', divider: true, roles: ['admin', 'manager'] },
+  { key: 'audit', label: 'Audits', roles: ['admin', 'manager'] },
 ]
 
 const filteredTabs = computed(() => {

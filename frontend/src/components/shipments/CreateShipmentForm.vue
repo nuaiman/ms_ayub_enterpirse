@@ -32,11 +32,10 @@
             <div class="flex-1 min-w-0">
               <p class="text-sm font-semibold text-primary">{{ selectedItem.name }}</p>
               <div class="flex items-center gap-3 mt-1 flex-wrap">
-                <span class="text-xs text-secondary">{{ selectedItem.quantity }} {{ selectedItem.quantity_unit }}
-                  available</span>
+                <span class="text-xs text-secondary">{{ selectedItem.quantity }} {{ selectedItem.quantity_unit }} available</span>
                 <span v-if="selectedItem.weight" class="text-xs text-muted">{{ selectedItem.weight }} kg</span>
-                <span v-if="selectedItem.contract_id" class="text-xs text-muted">Contract #{{ selectedItem.contract_id
-                  }}</span>
+                <span v-if="selectedItem.customer_id" class="text-xs text-muted">Customer #{{ selectedItem.customer_id }}</span>
+                <span v-if="selectedItem.duration_type" class="text-xs text-accent">· Contract: {{ selectedItem.duration_type }}</span>
               </div>
             </div>
             <button @click="clearSelectedItem" type="button"
@@ -56,7 +55,7 @@
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input ref="itemSearchRef" v-model="itemSearch" type="text"
-                placeholder="Search items by name, contract, or scan barcode..." @focus="showItemDropdown = true"
+                placeholder="Search items by name, customer..." @focus="showItemDropdown = true"
                 @keydown.escape="showItemDropdown = false"
                 class="input w-full pl-9 pr-8 py-2.5 rounded-lg text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
               <button v-if="itemSearch" @click="itemSearch = ''" type="button"
@@ -70,21 +69,6 @@
             <!-- Dropdown -->
             <div v-if="showItemDropdown"
               class="absolute z-50 left-0 right-0 mt-1 border border-default rounded-xl shadow-lg overflow-hidden bg-surface">
-
-              <!-- Create new item button at top -->
-              <div class="px-3 py-2 border-b border-divider">
-                <button @click="openQuickAddItem" type="button"
-                  class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium text-accent hover:bg-accent/5 transition-colors">
-                  <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
-                    </svg>
-                  </div>
-                  <span>Create New Item</span>
-                </button>
-              </div>
-
-              <!-- Item list -->
               <div class="max-h-56 overflow-y-auto">
                 <div v-if="filteredItems.length === 0" class="px-4 py-6 text-center">
                   <div class="w-10 h-10 mx-auto rounded-full bg-surface-alt flex items-center justify-center mb-2">
@@ -114,9 +98,9 @@
                     <p class="text-sm font-medium text-primary truncate">{{ i.name }}</p>
                     <div class="flex items-center gap-2 mt-0.5">
                       <span class="text-xs text-muted">{{ i.quantity }} {{ i.quantity_unit }}</span>
-                      <span v-if="i.contract_id" class="text-[10px] text-muted bg-surface-alt px-1.5 py-0.5 rounded">#{{
-                        i.contract_id }}</span>
+                      <span v-if="i.customer_id" class="text-[10px] text-muted bg-surface-alt px-1.5 py-0.5 rounded">#{{ i.customer_id }}</span>
                       <span v-if="i.weight" class="text-[10px] text-muted">{{ i.weight }}kg</span>
+                      <span v-if="i.duration_type" class="text-[10px] text-accent">contract</span>
                     </div>
                   </div>
                   <svg class="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,7 +235,7 @@
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-primary">Customer Charge</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
                 <input v-model.number="customer_charge" type="number" step="0.01" min="0" placeholder="0.00"
                   class="input w-full pl-7 pr-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
               </div>
@@ -259,7 +243,7 @@
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-primary">Company Cost</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
                 <input v-model.number="company_cost" type="number" step="0.01" min="0" placeholder="0.00"
                   class="input w-full pl-7 pr-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
               </div>
@@ -267,7 +251,7 @@
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-primary">Company Paid</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
                 <input v-model.number="company_paid" type="number" step="0.01" min="0" placeholder="0.00"
                   class="input w-full pl-7 pr-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
               </div>
@@ -275,7 +259,7 @@
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-primary">Customer Paid</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
                 <input v-model.number="customer_paid" type="number" step="0.01" min="0" placeholder="0.00"
                   class="input w-full pl-7 pr-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
               </div>
@@ -313,11 +297,6 @@
         </div>
       </form>
     </div>
-
-    <!-- Quick Add Item Dialog -->
-    <BaseDialog v-model="showQuickAddItem" size="lg">
-      <CreateItemForm @item-created="handleItemAdded" />
-    </BaseDialog>
   </div>
 </template>
 
@@ -327,8 +306,6 @@ import type { ShipmentType } from '@/types/shipment'
 import type { Item } from '@/types/item'
 import { useShipmentsStore } from '@/stores/shipments'
 import { useItemsStore } from '@/stores/items'
-import BaseDialog from '@/components/ui/BaseDialog.vue'
-import CreateItemForm from '@/components/items/CreateItemForm.vue'
 import { getImageUrl } from '@/utils/image'
 import { push } from 'notivue'
 
@@ -364,7 +341,6 @@ const itemSearch = ref('')
 const showItemDropdown = ref(false)
 const selectedItem = ref<Item | null>(null)
 const items = ref<Item[]>([])
-const showQuickAddItem = ref(false)
 
 onMounted(async () => {
   await itemsStore.fetchItems()
@@ -378,7 +354,8 @@ const filteredItems = computed(() => {
   return inStock.filter(i =>
     i.name.toLowerCase().includes(q) ||
     (i.notes && i.notes.toLowerCase().includes(q)) ||
-    (i.contract_id && String(i.contract_id).includes(q))
+    (i.customer_id && String(i.customer_id).includes(q)) ||
+    (i.duration_type && i.duration_type.toLowerCase().includes(q))
   )
 })
 
@@ -405,25 +382,6 @@ const clearSelectedItem = () => {
   selectedItem.value = null
   itemSearch.value = ''
   quantity.value = 1
-}
-
-const openQuickAddItem = () => {
-  showItemDropdown.value = false
-  itemSearch.value = ''
-  showQuickAddItem.value = true
-}
-
-const handleItemAdded = async () => {
-  showQuickAddItem.value = false
-  await itemsStore.fetchItems()
-  items.value = itemsStore.items
-  if (items.value.length > 0) {
-    const last = items.value[0]
-    if (last) {
-      selectedItem.value = last
-      push.success('Item added and selected')
-    }
-  }
 }
 
 const resetForm = () => {

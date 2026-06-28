@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users (
     image_url TEXT,
     password TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'staff' CHECK (
-    role IN ('admin', 'manager', 'accounts', 'staff')),
+        role IN ('admin', 'manager', 'accounts', 'staff')
+    ),
     refresh_token TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -65,50 +66,37 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
-
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
 
 --------------------------------------------------
--- STORAGE CONTRACTS
---------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS contracts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    notes TEXT,
-    customer_id INTEGER NOT NULL,
-    duration_type TEXT NOT NULL DEFAULT 'month' CHECK (
-        duration_type IN ('day', 'week', 'month', 'year')
-    ),
-    duration INTEGER,
-    price REAL,
-    security_deposit REAL DEFAULT 0,
-    estimated_value REAL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'active' CHECK (
-        status IN ('active', 'completed', 'cancelled')
-    ),
-    ended_at DATETIME,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (customer_id) REFERENCES customers(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_contract_customer ON contracts(customer_id);
-
---------------------------------------------------
--- STORED ITEMS
+-- ITEMS (Unified: Items + Optional Contracts)
 --------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     notes TEXT,
-    contract_id INTEGER,
+    
+    -- Customer Relationship (Optional)
+    customer_id INTEGER,
+    
+    -- Contract Fields (Optional)
+    duration_type TEXT CHECK (
+        duration_type IN ('day', 'week', 'month', 'year')
+    ),
+    duration INTEGER,
+    price REAL,
+    security_deposit REAL DEFAULT 0,
+    estimated_value REAL DEFAULT 0,
+    status TEXT DEFAULT 'active' CHECK (
+        status IN ('active', 'completed', 'cancelled')
+    ),
+    ended_at DATETIME,
+    
+    -- Item Fields (Required)
     name TEXT NOT NULL,
     quantity_unit TEXT NOT NULL DEFAULT 'pcs' CHECK (
-        quantity_unit IN ('pcs','g','kg','ton','ml','liter')
+        quantity_unit IN ('pcs', 'g', 'kg', 'ton', 'ml', 'liter', 'kl')
     ),
     quantity INTEGER NOT NULL DEFAULT 1,
     weight REAL, -- in KG
@@ -116,14 +104,16 @@ CREATE TABLE IF NOT EXISTS items (
     height REAL, -- Top to Bottom
     length REAL, -- Front to Back
     image_url TEXT,
+    
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (contract_id) REFERENCES contracts(id),    
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_items_contract ON items(contract_id);
+CREATE INDEX IF NOT EXISTS idx_items_customer ON items(customer_id);
+CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
 
 --------------------------------------------------
 -- SHIPMENTS
@@ -138,10 +128,7 @@ CREATE TABLE IF NOT EXISTS shipments (
     item_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL,
 
-    --------------------------------------------------
     -- DELIVERY FIELDS (nullable for pickup)
-    --------------------------------------------------
-
     vehicle_number TEXT,
     driver_name TEXT,
     driver_phone TEXT,
@@ -155,10 +142,7 @@ CREATE TABLE IF NOT EXISTS shipments (
     company_paid REAL DEFAULT 0,
     customer_paid REAL DEFAULT 0,
 
-    --------------------------------------------------
     -- STATUS
-    --------------------------------------------------
-
     status TEXT NOT NULL DEFAULT 'pending' CHECK (
         status IN (
             'pending',
@@ -168,17 +152,19 @@ CREATE TABLE IF NOT EXISTS shipments (
         )
     ),
 
-    --------------------------------------------------
     -- COMMON FIELDS
-    --------------------------------------------------
-
     notes TEXT,
     shipped_at DATETIME,
     received_at DATETIME,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
     FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_shipments_item ON shipments(item_id);
+CREATE INDEX IF NOT EXISTS idx_shipments_status ON shipments(status);
 
 --------------------------------------------------
 -- EXPENSES (DAILY BUSINESS COSTS)
@@ -213,25 +199,16 @@ CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
 
 CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,  -- who did the action
-    action TEXT NOT NULL,  -- create, update, delete, approve, etc
+    user_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
     description TEXT NOT NULL,
-    entity_type TEXT NOT NULL,  -- table name like 'items', 'contracts'
-    entity_id INTEGER NOT NULL,  -- row id
-    old_data TEXT,  -- JSON string
-    new_data TEXT,  -- JSON string
+    entity_type TEXT NOT NULL,
+    entity_id INTEGER NOT NULL,
+    old_data TEXT,
+    new_data TEXT,
     ip_address TEXT,
     user_agent TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
-
-
-
-
-
-
-
-
-

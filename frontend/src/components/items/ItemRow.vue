@@ -1,8 +1,9 @@
 <template>
   <div
     class="grid grid-cols-12 items-center py-3.5 px-3 border-b border-default transition-all duration-200 relative text-sm group hover:border-b-accent/50 hover:shadow-[0_1px_0_0_rgba(232,33,39,0.3)] cursor-pointer"
-    @click="emit('view-item', item)">
+    @click="!isStaff && emit('view-item', item)">
 
+    <!-- Name -->
     <div class="col-span-3">
       <div class="flex items-center gap-3">
         <div class="shrink-0">
@@ -23,24 +24,29 @@
       </div>
     </div>
 
+    <!-- Customer -->
     <div class="col-span-2">
-      <span class="text-xs text-secondary">{{ item.weight ? item.weight + ' kg' : '—' }}</span>
+      <span v-if="item.customer_id" class="text-sm text-secondary truncate block">
+        {{ getCustomerName(item.customer_id) }}
+      </span>
+      <span v-else class="text-xs text-muted">—</span>
     </div>
 
+    <!-- Contract - Staff only see "—" -->
     <div class="col-span-2">
-      <div v-if="item.contract_id" @click.stop>
+      <div v-if="!isStaff && hasContract(item)" @click.stop>
         <button @click="showContractDialog = true"
           class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-surface-alt transition-colors text-left">
-          <span class="text-sm font-medium text-primary">#{{ item.contract_id }}</span>
-          <span v-if="getContract(item.contract_id)" class="text-[10px] px-1.5 py-0.5 rounded-full border"
-            :class="getContract(item.contract_id)?.status === 'active' ? 'status-success' : getContract(item.contract_id)?.status === 'completed' ? 'status-info' : 'status-warning'">
-            {{ getContract(item.contract_id)?.status }}
+          <span class="text-xs font-medium text-primary">Contract</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full border" :class="getStatusClass(item.status || 'active')">
+            {{ item.status || 'active' }}
           </span>
         </button>
       </div>
       <span v-else class="text-xs text-muted">—</span>
     </div>
 
+    <!-- Dimensions -->
     <div class="col-span-2">
       <span v-if="item.length || item.width || item.height" class="text-xs text-muted">
         {{ [item.length, item.width, item.height].filter(Boolean).join('×') }}
@@ -48,114 +54,137 @@
       <span v-else class="text-xs text-muted">—</span>
     </div>
 
+    <!-- Created -->
     <div class="col-span-1">
       <span class="text-xs text-muted">{{ formatDate(item.created_at) }}</span>
     </div>
 
+    <!-- Actions - Staff see nothing -->
     <div class="col-span-2 flex justify-end pr-0.5 relative" @click.stop>
-      <button @click="open = !open"
-        class="w-7 h-7 flex items-center justify-center border border-default rounded-md hover:bg-surface-alt transition-all duration-200 opacity-0 group-hover:opacity-100"
-        :class="{ 'opacity-100': open }">
-        <svg class="w-3.5 h-3.5 text-secondary" fill="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="5" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="19" r="1.5" />
-        </svg>
-      </button>
+      <!-- Only show actions dropdown for non-staff users -->
+      <template v-if="!isStaff">
+        <button @click="open = !open"
+          class="w-7 h-7 flex items-center justify-center border border-default rounded-md hover:bg-surface-alt transition-all duration-200 opacity-0 group-hover:opacity-100"
+          :class="{ 'opacity-100': open }">
+          <svg class="w-3.5 h-3.5 text-secondary" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="19" r="1.5" />
+          </svg>
+        </button>
 
-      <Transition enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
-        leave-active-class="transition ease-in duration-150" leave-from-class="opacity-100 scale-100 translate-y-0"
-        leave-to-class="opacity-0 scale-95 translate-y-1">
-        <div v-if="open"
-          class="absolute right-0 top-9 w-44 bg-surface border border-default rounded-xl shadow-lg overflow-hidden z-50 py-1">
-          <div class="px-3 py-1.5 border-b border-divider">
-            <p class="text-[11px] font-semibold text-muted uppercase">Actions</p>
+        <Transition enter-active-class="transition ease-out duration-200"
+          enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
+          leave-active-class="transition ease-in duration-150" leave-from-class="opacity-100 scale-100 translate-y-0"
+          leave-to-class="opacity-0 scale-95 translate-y-1">
+          <div v-if="open"
+            class="absolute right-0 top-9 w-48 bg-surface border border-default rounded-xl shadow-lg overflow-hidden z-50 py-1">
+            <div class="px-3 py-1.5 border-b border-divider">
+              <p class="text-[11px] font-semibold text-muted uppercase">Actions</p>
+            </div>
+
+            <!-- Edit -->
+            <button @click="openEditDialog"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-secondary hover:bg-surface-alt transition-colors">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Item
+            </button>
+
+            <!-- Change Status (only for items with contract) -->
+            <div v-if="hasContract(item)">
+              <div class="px-3 py-1">
+                <p class="text-[10px] text-muted uppercase">Change Status</p>
+              </div>
+              <button
+                v-for="status in availableStatuses"
+                :key="status"
+                @click="handleStatusChange(status)"
+                class="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-surface-alt transition-colors"
+                :class="item.status === status ? 'text-accent font-semibold' : 'text-secondary'"
+              >
+                <span class="w-2 h-2 rounded-full" :class="getStatusDotClass(status)"></span>
+                {{ status.charAt(0).toUpperCase() + status.slice(1) }}
+                <span v-if="item.status === status" class="ml-auto text-accent">✓</span>
+              </button>
+            </div>
+
+            <div class="border-t border-divider my-0.5"></div>
+
+            <!-- Delete -->
+            <button @click="openDeleteConfirm"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-warning-text hover:bg-surface-alt transition-colors">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Item
+            </button>
           </div>
-          <button @click="openEditDialog"
-            class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-secondary hover:bg-surface-alt transition-colors">
-            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit Item
-          </button>
-          <div class="border-t border-divider my-0.5"></div>
-          <button @click="openDeleteConfirm"
-            class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-warning-text hover:bg-surface-alt transition-colors">
-            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete Item
-          </button>
-        </div>
-      </Transition>
-      <div v-if="open" class="fixed inset-0 z-40" @click="open = false"></div>
+        </Transition>
+        <div v-if="open" class="fixed inset-0 z-40" @click="open = false"></div>
+      </template>
+
+      <!-- For staff users, show nothing -->
     </div>
 
-    <!-- Contract Quick View Dialog -->
-    <BaseDialog v-model="showContractDialog" size="md" @click.stop>
-      <div v-if="item.contract_id && getContract(item.contract_id)" class="space-y-5">
+    <!-- Contract Quick View Dialog (only for non-staff) -->
+    <BaseDialog v-if="!isStaff" v-model="showContractDialog" size="md" @click.stop>
+      <div v-if="hasContract(item)" class="space-y-5">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-lg font-bold text-primary">Contract #{{ item.contract_id }}</h2>
-            <p class="text-sm text-muted capitalize">{{ getContract(item.contract_id)?.status }}</p>
+            <h2 class="text-lg font-bold text-primary">Contract Details</h2>
+            <p class="text-sm text-muted">{{ item.name }}</p>
           </div>
           <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border"
-            :class="getContract(item.contract_id)?.status === 'active' ? 'status-success' : getContract(item.contract_id)?.status === 'completed' ? 'status-info' : 'status-warning'">
-            {{ getContract(item.contract_id)?.status }}
+            :class="getStatusClass(item.status || 'active')">
+            {{ item.status || 'active' }}
           </span>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-1">
             <p class="text-[10px] text-muted uppercase">Duration</p>
-            <p class="text-xs text-primary">{{ getContract(item.contract_id)?.duration || '—' }} {{
-              getContract(item.contract_id)?.duration_type }}</p>
+            <p class="text-xs text-primary">{{ item.duration || '—' }} {{ item.duration_type }}</p>
           </div>
           <div class="space-y-1">
             <p class="text-[10px] text-muted uppercase">Price</p>
-            <p class="text-xs text-primary">{{ getContract(item.contract_id)?.price ? '$' +
-              getContract(item.contract_id)?.price : '—' }}</p>
+            <p class="text-xs text-primary">{{ item.price ? '৳' + item.price : '—' }}</p>
           </div>
           <div class="space-y-1">
             <p class="text-[10px] text-muted uppercase">Sec. Deposit</p>
-            <p class="text-xs text-primary">{{ getContract(item.contract_id)?.security_deposit ? '$' +
-              getContract(item.contract_id)?.security_deposit : '—' }}</p>
+            <p class="text-xs text-primary">{{ item.security_deposit ? '৳' + item.security_deposit : '—' }}</p>
           </div>
           <div class="space-y-1">
             <p class="text-[10px] text-muted uppercase">Est. Value</p>
-            <p class="text-xs text-primary">{{ getContract(item.contract_id)?.estimated_value ? '$' +
-              getContract(item.contract_id)?.estimated_value : '—' }}</p>
+            <p class="text-xs text-primary">{{ item.estimated_value ? '৳' + item.estimated_value : '—' }}</p>
           </div>
         </div>
 
-        <!-- Customer from contract -->
-        <div v-if="getCustomerFromContract(item.contract_id)"
-          class="p-3 rounded-lg border border-default bg-surface-alt">
+        <!-- Customer from item -->
+        <div v-if="item.customer_id" class="p-3 rounded-lg border border-default bg-surface-alt">
           <p class="text-[10px] text-muted uppercase mb-2">Customer</p>
           <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-full bg-surface border border-default flex items-center justify-center shrink-0">
-              <span class="text-xs font-semibold text-muted">#{{ getContract(item.contract_id)?.customer_id }}</span>
+            <div class="w-10 h-10 rounded-full bg-surface border border-default flex items-center justify-center shrink-0">
+              <span class="text-xs font-semibold text-muted">#{{ item.customer_id }}</span>
             </div>
             <div>
-              <p class="text-sm font-medium text-primary">{{ getCustomerFromContract(item.contract_id)?.name }}</p>
-              <p class="text-xs text-muted">{{ getCustomerFromContract(item.contract_id)?.phone }}</p>
+              <p class="text-sm font-medium text-primary">{{ getCustomerName(item.customer_id) }}</p>
+              <p class="text-xs text-muted">{{ getCustomerPhone(item.customer_id) }}</p>
             </div>
           </div>
         </div>
 
         <div class="flex justify-end pt-2 border-t border-divider">
-          <button @click="showContractDialog = false"
-            class="button px-4 py-2 text-xs rounded-lg hover-surface">Close</button>
+          <button @click="showContractDialog = false" class="button px-4 py-2 text-xs rounded-lg hover-surface">Close</button>
         </div>
       </div>
     </BaseDialog>
 
-    <!-- Edit Dialog -->
-    <BaseDialog v-model="showEditDialog" size="lg" @click.stop>
+    <!-- Edit Dialog (only for non-staff) -->
+    <BaseDialog v-if="!isStaff" v-model="showEditDialog" size="lg" @click.stop>
       <div class="space-y-4">
         <div class="flex items-center gap-3 mb-2">
           <div class="w-10 h-10 rounded-full bg-success-bg flex items-center justify-center">
@@ -170,75 +199,95 @@
           </div>
         </div>
 
-        <!-- Contract Assignment (Admin/Manager only) -->
-        <div v-if="canAssignContract" class="pb-4 mb-4 border-b border-divider">
-          <label class="text-sm font-medium text-primary block mb-2">Assigned Contract</label>
-
-          <div v-if="selectedContract"
-            class="flex items-center gap-3 p-3 rounded-lg border border-success-border bg-success-bg">
-            <div
-              class="w-10 h-10 rounded-full bg-surface-alt border border-default flex items-center justify-center shrink-0">
-              <span class="text-sm font-semibold text-muted">#{{ selectedContract.id }}</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-primary">Contract #{{ selectedContract.id }}</p>
-              <p class="text-xs text-secondary">Customer #{{ selectedContract.customer_id }} · <span
-                  class="capitalize">{{ selectedContract.status }}</span></p>
-            </div>
-            <button @click="clearSelectedContract" type="button"
-              class="shrink-0 text-muted hover:text-warning-text transition-colors p-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div v-else class="relative">
-            <div class="relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none"
-                stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input v-model="contractSearch" type="text" placeholder="Search contracts to assign..."
-                @focus="showContractDropdown = true" @keydown.escape="showContractDropdown = false"
-                class="input w-full pl-9 pr-8 py-2.5 rounded-lg text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
-              <button v-if="contractSearch" @click="contractSearch = ''" type="button"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Customer Assignment -->
+        <div class="pb-4 mb-4 border-b border-divider">
+          <label class="text-sm font-medium text-primary block mb-2">Customer</label>
+          <div class="relative">
+            <div v-if="editCustomer" class="flex items-center gap-3 p-3 rounded-lg border border-success-border bg-success-bg">
+              <div class="w-10 h-10 rounded-full bg-surface-alt border border-default flex items-center justify-center shrink-0">
+                <span class="text-sm font-semibold text-muted">#{{ editCustomer.id }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-primary">{{ editCustomer.name }}</p>
+                <p class="text-xs text-secondary">{{ editCustomer.phone }}</p>
+              </div>
+              <button @click="clearEditCustomer" type="button"
+                class="shrink-0 text-muted hover:text-warning-text transition-colors p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-
-            <div v-if="showContractDropdown"
-              class="absolute z-50 left-0 right-0 mt-1 border border-default rounded-xl shadow-lg overflow-hidden bg-surface">
-              <div class="max-h-48 overflow-y-auto">
-                <div v-if="filteredContracts.length === 0" class="px-4 py-6 text-center">
-                  <p class="text-sm text-muted">No contracts match "{{ contractSearch }}"</p>
-                </div>
-                <button v-for="c in filteredContracts" :key="c.id" @click="selectContract(c)" type="button"
+            <div v-else>
+              <input v-model="editCustomerSearch" type="text" placeholder="Search customers..."
+                @focus="showEditCustomerDropdown = true"
+                class="input w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+              <div v-if="showEditCustomerDropdown"
+                class="absolute z-50 left-0 right-0 mt-1 border border-default rounded-xl shadow-lg overflow-hidden bg-surface max-h-48 overflow-y-auto">
+                <button v-for="c in editFilteredCustomers" :key="c.id" @click="selectEditCustomer(c)" type="button"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-alt transition-colors text-left border-b border-divider last:border-b-0">
-                  <div
-                    class="w-9 h-9 rounded-full bg-surface-alt border border-default flex items-center justify-center shrink-0">
-                    <span class="text-xs font-semibold text-muted">#{{ c.id }}</span>
-                  </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-primary">Contract #{{ c.id }}</p>
-                    <div class="flex items-center gap-2 mt-0.5">
-                      <span class="text-xs text-muted">Customer #{{ c.customer_id }}</span>
-                      <span class="text-[10px] px-1.5 py-0.5 rounded-full border"
-                        :class="c.status === 'active' ? 'status-success' : c.status === 'completed' ? 'status-info' : 'status-warning'">{{
-                          c.status }}</span>
-                    </div>
+                    <p class="text-sm font-medium text-primary">{{ c.name }}</p>
+                    <p class="text-xs text-muted">{{ c.phone }}</p>
                   </div>
                 </button>
               </div>
             </div>
-            <div v-if="showContractDropdown" class="fixed inset-0 z-40" @click="showContractDropdown = false"></div>
           </div>
         </div>
 
+        <!-- Contract Details (Optional) - MATCHES CREATE FORM -->
+        <div class="pb-4 mb-4 border-b border-divider">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-muted uppercase tracking-wider">
+              Contract Details <span class="text-xs font-normal normal-case">(Optional)</span>
+            </h3>
+            <button type="button" @click="showEditContract = !showEditContract"
+              class="text-sm text-accent hover:text-accent/80 transition-colors">
+              {{ showEditContract ? 'Hide' : 'Add Contract' }}
+            </button>
+          </div>
+
+          <div v-if="showEditContract" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Duration Type</label>
+              <select v-model="editContract.duration_type"
+                class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                <option value="">Select Type</option>
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Duration</label>
+              <input v-model.number="editContract.duration" type="number" min="1" placeholder="Duration"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Price</label>
+              <input v-model.number="editContract.price" type="number" step="0.01" placeholder="0.00"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Security Deposit</label>
+              <input v-model.number="editContract.security_deposit" type="number" step="0.01" placeholder="0.00"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Estimated Value</label>
+              <input v-model.number="editContract.estimated_value" type="number" step="0.01" placeholder="0.00"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Fields -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-1.5 md:col-span-2">
             <label class="text-sm font-medium text-primary">Name <span class="text-warning-text">*</span></label>
@@ -248,20 +297,34 @@
 
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Quantity</label>
-            <input v-model.number="editForm.quantity" type="number" min="1"
-              class="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            <div class="flex items-center gap-2">
+              <button type="button" @click="editForm.quantity > 1 ? editForm.quantity-- : null"
+                class="w-9 h-9 flex items-center justify-center rounded-lg border border-default text-secondary hover:bg-surface-alt transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                </svg>
+              </button>
+              <input v-model.number="editForm.quantity" type="number" min="1" placeholder="1"
+                class="input flex-1 px-3 py-2 rounded-lg text-center placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+              <button type="button" @click="editForm.quantity++"
+                class="w-9 h-9 flex items-center justify-center rounded-lg border border-default text-secondary hover:bg-surface-alt transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Unit</label>
             <select v-model="editForm.quantity_unit"
               class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
-              <option value="pcs" class="bg-surface text-primary">pcs</option>
-              <option value="g" class="bg-surface text-primary">g</option>
-              <option value="kg" class="bg-surface text-primary">kg</option>
-              <option value="ton" class="bg-surface text-primary">ton</option>
-              <option value="ml" class="bg-surface text-primary">ml</option>
-              <option value="liter" class="bg-surface text-primary">liter</option>
+              <option value="pcs">pcs</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="ton">ton</option>
+              <option value="ml">ml</option>
+              <option value="liter">liter</option>
             </select>
           </div>
 
@@ -272,6 +335,7 @@
           </div>
         </div>
 
+        <!-- Dimensions -->
         <div class="grid grid-cols-3 gap-4 pt-2">
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Length</label>
@@ -292,7 +356,7 @@
 
         <div class="space-y-1.5 pt-2">
           <label class="text-sm font-medium text-primary">Notes</label>
-          <textarea v-model="editForm.notes" rows="2" placeholder="Add notes..."
+          <textarea v-model="editForm.notes" rows="3" placeholder="Add notes..."
             class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"></textarea>
         </div>
 
@@ -314,8 +378,8 @@
       </div>
     </BaseDialog>
 
-    <!-- Delete Dialog -->
-    <BaseDialog v-model="showDeleteDialog" size="sm" @click.stop>
+    <!-- Delete Dialog (only for non-staff) -->
+    <BaseDialog v-if="!isStaff" v-model="showDeleteDialog" size="sm" @click.stop>
       <div class="space-y-5">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-full bg-warning-text/10 flex items-center justify-center shrink-0">
@@ -354,10 +418,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import type { Item, QuantityUnit } from '@/types/item'
-import type { Contract } from '@/types/contract'
+import type { Item, QuantityUnit, DurationType, ItemStatus } from '@/types/item'
+import { hasContract } from '@/types/item'
+import type { Customer } from '@/types/customer'
 import { useItemsStore } from '@/stores/items'
-import { useContractsStore } from '@/stores/contracts'
 import { useCustomersStore } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
@@ -375,11 +439,11 @@ const emit = defineEmits<{
 }>()
 
 const itemsStore = useItemsStore()
-const contractsStore = useContractsStore()
 const customersStore = useCustomersStore()
-const auth = useAuthStore()
+const authStore = useAuthStore()
 
-const canAssignContract = computed(() => auth.user?.role === 'admin' || auth.user?.role === 'manager')
+// Check if user is staff (only view permission)
+const isStaff = computed(() => authStore.user?.role === 'staff')
 
 const open = ref(false)
 const showContractDialog = ref(false)
@@ -388,10 +452,13 @@ const showDeleteDialog = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 
-const contractSearch = ref('')
-const showContractDropdown = ref(false)
-const selectedContract = ref<Contract | null>(null)
+// Edit contract visibility - default to false, user must click "Add Contract"
+const showEditContract = ref(false)
 
+// Available statuses for contract items
+const availableStatuses: ItemStatus[] = ['active', 'completed', 'cancelled']
+
+// Edit form state
 const editForm = reactive({
   name: '',
   quantity: 1,
@@ -400,28 +467,70 @@ const editForm = reactive({
   length: null as number | null,
   width: null as number | null,
   height: null as number | null,
-  notes: '' as string | null
+  notes: null as string | null,
 })
 
-const filteredContracts = computed(() => {
-  if (!contractSearch.value) return contractsStore.contracts
-  const q = contractSearch.value.toLowerCase()
-  return contractsStore.contracts.filter(c =>
-    String(c.id).includes(q) ||
-    String(c.customer_id).includes(q) ||
-    c.status.toLowerCase().includes(q)
+// Edit contract state
+const editContract = reactive({
+  duration_type: null as DurationType | null,
+  duration: null as number | null,
+  price: null as number | null,
+  security_deposit: null as number | null,
+  estimated_value: null as number | null,
+  status: null as ItemStatus | null,
+})
+
+// Edit customer state
+const editCustomerSearch = ref('')
+const showEditCustomerDropdown = ref(false)
+const editCustomer = ref<Customer | null>(null)
+
+const editFilteredCustomers = computed(() => {
+  if (!editCustomerSearch.value) return customersStore.customers
+  const q = editCustomerSearch.value.toLowerCase()
+  return customersStore.customers.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    c.phone.includes(q)
   )
 })
 
-const selectContract = (c: Contract) => {
-  selectedContract.value = c
-  contractSearch.value = ''
-  showContractDropdown.value = false
+const getCustomerName = (id: number): string => {
+  const customer = customersStore.customers.find(c => c.id === id)
+  return customer?.name || `#${id}`
 }
 
-const clearSelectedContract = () => {
-  selectedContract.value = null
-  contractSearch.value = ''
+const getCustomerPhone = (id: number): string => {
+  const customer = customersStore.customers.find(c => c.id === id)
+  return customer?.phone || ''
+}
+
+const getStatusClass = (status: string) => {
+  const classes = {
+    active: 'border-green-400 bg-green-50 text-green-700',
+    completed: 'border-blue-400 bg-blue-50 text-blue-700',
+    cancelled: 'border-red-400 bg-red-50 text-red-700'
+  }
+  return classes[status as keyof typeof classes] || classes.active
+}
+
+const getStatusDotClass = (status: string) => {
+  const classes = {
+    active: 'bg-green-500',
+    completed: 'bg-blue-500',
+    cancelled: 'bg-red-500'
+  }
+  return classes[status as keyof typeof classes] || 'bg-gray-500'
+}
+
+const selectEditCustomer = (c: Customer) => {
+  editCustomer.value = c
+  editCustomerSearch.value = ''
+  showEditCustomerDropdown.value = false
+}
+
+const clearEditCustomer = () => {
+  editCustomer.value = null
+  editCustomerSearch.value = ''
 }
 
 const formatDate = (dateStr: string) => {
@@ -431,16 +540,6 @@ const formatDate = (dateStr: string) => {
     month: 'short',
     day: 'numeric'
   })
-}
-
-const getContract = (id: number) => {
-  return contractsStore.contracts.find(c => c.id === id)
-}
-
-const getCustomerFromContract = (contractId: number) => {
-  const contract = getContract(contractId)
-  if (!contract) return null
-  return customersStore.customers.find(c => c.id === contract.customer_id)
 }
 
 const openEditDialog = () => {
@@ -454,18 +553,51 @@ const openEditDialog = () => {
   editForm.length = props.item.length ?? null
   editForm.width = props.item.width ?? null
   editForm.height = props.item.height ?? null
-  editForm.notes = props.item.notes ?? ''
+  editForm.notes = props.item.notes ?? null
 
-  // Load existing contract if any
-  if (props.item.contract_id) {
-    const existingContract = getContract(props.item.contract_id)
-    selectedContract.value = existingContract || null
+  // Load customer
+  if (props.item.customer_id) {
+    const customer = customersStore.customers.find(c => c.id === props.item.customer_id)
+    editCustomer.value = customer || null
   } else {
-    selectedContract.value = null
+    editCustomer.value = null
   }
 
-  contractSearch.value = ''
+  // Load contract fields if exists
+  if (hasContract(props.item)) {
+    editContract.duration_type = props.item.duration_type || null
+    editContract.duration = props.item.duration || null
+    editContract.price = props.item.price || null
+    editContract.security_deposit = props.item.security_deposit || null
+    editContract.estimated_value = props.item.estimated_value || null
+    editContract.status = props.item.status || null
+    showEditContract.value = true // Show contract section if item has contract
+  } else {
+    // Reset contract fields if no contract
+    editContract.duration_type = null
+    editContract.duration = null
+    editContract.price = null
+    editContract.security_deposit = null
+    editContract.estimated_value = null
+    editContract.status = null
+    showEditContract.value = false // Hide contract section if no contract
+  }
+
   showEditDialog.value = true
+}
+
+const handleStatusChange = async (status: string) => {
+  if (status === props.item.status) return // Don't change if same status
+
+  try {
+    await itemsStore.updateItemStatus(props.item.id, status)
+    push.success(`Contract status updated to ${status}`)
+    emit('item-updated')
+    open.value = false // Close the actions dropdown
+  } catch (error) {
+    console.error('Error updating status:', error)
+    push.error('Failed to update contract status')
+  }
 }
 
 const handleUpdate = async () => {
@@ -473,18 +605,97 @@ const handleUpdate = async () => {
   saving.value = true
 
   try {
-    await itemsStore.updateItem(props.item.id, {
+    // Build base payload with all item fields
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload: any = {
       name: editForm.name,
       quantity: editForm.quantity,
       quantity_unit: editForm.quantity_unit,
-      weight: editForm.weight,
-      length: editForm.length,
-      width: editForm.width,
-      height: editForm.height,
-      notes: editForm.notes || null,
-      contract_id: selectedContract.value?.id ?? null // Included the selected contract
-    })
+    }
 
+    // Only include optional fields if they have values
+    if (editForm.weight !== null && editForm.weight !== undefined) {
+      payload.weight = editForm.weight
+    }
+    if (editForm.length !== null && editForm.length !== undefined) {
+      payload.length = editForm.length
+    }
+    if (editForm.width !== null && editForm.width !== undefined) {
+      payload.width = editForm.width
+    }
+    if (editForm.height !== null && editForm.height !== undefined) {
+      payload.height = editForm.height
+    }
+    if (editForm.notes) {
+      payload.notes = editForm.notes
+    }
+    if (editCustomer.value?.id) {
+      payload.customer_id = editCustomer.value.id
+    } else {
+      payload.customer_id = null
+    }
+
+    // Handle contract fields
+    if (showEditContract.value) {
+      // User wants to add/edit contract
+      if (editContract.duration_type) {
+        // Only include contract fields if duration_type is selected
+        payload.duration_type = editContract.duration_type
+
+        if (editContract.duration !== null && editContract.duration !== undefined) {
+          payload.duration = editContract.duration
+        }
+        if (editContract.price !== null && editContract.price !== undefined) {
+          payload.price = editContract.price
+        }
+        if (editContract.security_deposit !== null && editContract.security_deposit !== undefined) {
+          payload.security_deposit = editContract.security_deposit
+        }
+        if (editContract.estimated_value !== null && editContract.estimated_value !== undefined) {
+          payload.estimated_value = editContract.estimated_value
+        }
+        // If item already had a contract, keep the status or update it
+        if (editContract.status) {
+          payload.status = editContract.status
+        } else if (hasContract(props.item)) {
+          // Keep existing status if not changed
+          payload.status = props.item.status
+        } else {
+          // New contract, default to active
+          payload.status = 'active'
+        }
+      } else {
+        // User opened contract section but didn't select duration_type
+        // Keep existing contract if any, or don't add new one
+        if (hasContract(props.item)) {
+          // Keep existing contract fields
+          payload.duration_type = props.item.duration_type
+          payload.duration = props.item.duration
+          payload.price = props.item.price
+          payload.security_deposit = props.item.security_deposit
+          payload.estimated_value = props.item.estimated_value
+          payload.status = props.item.status
+        }
+        // If no existing contract and no duration_type selected, don't add contract
+      }
+    } else {
+      // User hid the contract section
+      if (hasContract(props.item)) {
+        // If item had a contract and user hid the section, remove the contract
+        payload.duration_type = null
+        payload.duration = null
+        payload.price = null
+        payload.security_deposit = null
+        payload.estimated_value = null
+        payload.status = null
+      }
+      // If item didn't have a contract and section is hidden, do nothing
+    }
+
+    // Log what we're sending for debugging
+    console.log('Sending payload:', payload)
+
+    await itemsStore.updateItem(props.item.id, payload)
     push.success('Item updated successfully')
     showEditDialog.value = false
     emit('item-updated')
@@ -503,7 +714,6 @@ const openDeleteConfirm = () => {
 
 const handleDelete = async () => {
   deleting.value = true
-
   try {
     await itemsStore.deleteItem(props.item.id)
     push.success('Item deleted successfully')

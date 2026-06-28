@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -246,6 +247,27 @@ func (m *ShipmentModel) Update(ctx context.Context, id int64, shipment *Shipment
 		shipment.Status,
 		id,
 	)
+	return err
+}
+
+// internal/models/shipment.go
+
+func (m *ShipmentModel) UpdateFields(ctx context.Context, id int64, updates map[string]any) error {
+	// Build the SET clause dynamically
+	var setClauses []string
+	var args []any
+
+	for field, value := range updates {
+		setClauses = append(setClauses, field+" = ?")
+		args = append(args, value)
+	}
+
+	// Add id as the last argument for WHERE clause
+	args = append(args, id)
+
+	query := "UPDATE shipments SET " + strings.Join(setClauses, ", ") + " WHERE id = ?"
+
+	_, err := m.DB.ExecContext(ctx, query, args...)
 	return err
 }
 
