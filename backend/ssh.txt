@@ -1,0 +1,181 @@
+Perfect! Let's start from the very beginning. Here's exactly what you need to do:
+
+## Step 1: SSH into Your VPS
+
+Open **PowerShell** on your Windows computer and type:
+
+```powershell
+ssh root@163.227.239.217
+```
+
+When prompted for password, enter:
+```
+J5cWT);9ykPj03
+```
+
+You should now be connected and see something like:
+```
+root@4gb-vm:~#
+```
+
+---
+
+Now that you're connected, let's start fresh:
+
+## Step 2: Clean Everything
+
+Copy and paste these commands one by one:
+
+```bash
+# Stop any running services
+systemctl stop msae-backend 2>/dev/null
+systemctl disable msae-backend 2>/dev/null
+
+# Remove old files
+rm -rf /root/ms_ayub_enterpirse
+rm -rf /usr/local/go
+rm -f /etc/systemd/system/msae-backend.service
+
+# Reload systemd
+systemctl daemon-reload
+```
+
+## Step 3: Update System
+
+```bash
+yum update -y
+```
+
+## Step 4: Install Go 1.26.4
+
+```bash
+cd /tmp
+wget https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+go version
+```
+
+You should see: `go version go1.26.4 linux/amd64`
+
+## Step 5: Clone Your Repository
+
+```bash
+cd /root
+git clone https://github.com/nuaiman/ms_ayub_enterpirse.git
+cd ms_ayub_enterpirse/backend
+ls -la
+```
+
+You should see: `go.mod`, `go.sum`, `cmd/`, `config/`, `internal/`, `public/`
+
+## Step 6: Upload Your Config File
+
+**Open a NEW PowerShell window** (keep the SSH window open) and run:
+
+```powershell
+scp C:\Users\ashiq\Documents\Clients\MS Ayub Enterprise\backend\config\config.env root@163.227.239.217:/root/ms_ayub_enterpirse/backend/config/
+```
+
+Enter the password when prompted: `J5cWT);9ykPj03`
+
+## Step 7: Build Your Application
+
+Go back to your SSH window and run:
+
+```bash
+cd /root/ms_ayub_enterpirse/backend
+go mod download
+go build -o msae-backend ./cmd/main.go
+```
+
+Wait for it to finish (1-2 minutes).
+
+## Step 8: Test Run
+
+```bash
+./msae-backend
+```
+
+If it starts successfully, you'll see logs. Press `Ctrl+C` to stop it.
+
+## Step 9: Create System Service
+
+```bash
+nano /etc/systemd/system/msae-backend.service
+```
+
+Paste this exact content:
+```ini
+[Unit]
+Description=MS Ayub Enterprise Backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ms_ayub_enterpirse/backend
+ExecStart=/root/ms_ayub_enterpirse/backend/msae-backend
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save with: `Ctrl+X`, then `Y`, then `Enter`
+
+## Step 10: Start the Service
+
+```bash
+systemctl daemon-reload
+systemctl start msae-backend
+systemctl enable msae-backend
+systemctl status msae-backend
+```
+
+## Step 11: Open Firewall
+
+```bash
+# Check if firewalld is running
+systemctl status firewalld
+
+# If running, open port 8080
+firewall-cmd --permanent --add-port=8080/tcp
+firewall-cmd --reload
+
+# OR if you want to just disable firewall (easier for testing)
+systemctl stop firewalld
+systemctl disable firewalld
+```
+
+## Step 12: Access Your App
+
+Open your browser and go to:
+```
+http://163.227.239.217:8080
+```
+
+---
+
+## **Quick Checklist**
+
+- [ ] Connected via SSH
+- [ ] Cleaned old files
+- [ ] Installed Go 1.26.4
+- [ ] Cloned repository
+- [ ] Uploaded config.env
+- [ ] Built the application
+- [ ] Created system service
+- [ ] Started the service
+- [ ] Opened firewall
+
+---
+
+**Let me know at which step you are and if you encounter any errors!** 
+
+If the browser doesn't load, share what error you see and we'll troubleshoot together.
