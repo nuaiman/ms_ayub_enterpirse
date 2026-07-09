@@ -1,12 +1,6 @@
-Here are the complete files for the deployment:
+## Step 1: Open PowerShell & SSH
 
----
-
-# **Deploy Your Backend - Complete Guide**
-
-## **Step 1: SSH into VPS**
-
-Open PowerShell and type:
+Open PowerShell, type:
 ```powershell
 ssh root@163.227.239.217
 ```
@@ -14,40 +8,10 @@ Password: `J5cWT);9ykPj03`
 
 ---
 
-## **Step 2: Install Go + Clone Repo**
-
-Copy and paste this entire command into the SSH window:
+## Step 2: Copy & Paste This One Command
 
 ```bash
-cd /tmp && wget -q https://go.dev/dl/go1.26.4.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz && echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc && cd /root && rm -rf ms_ayub_enterpirse && git clone https://github.com/nuaiman/ms_ayub_enterpirse.git && echo "✅ Go $(go version) installed & repo cloned"
-```
-
-Wait 2-3 minutes until you see: `✅ Go go1.26.4 linux/amd64 installed & repo cloned`
-
----
-
-## **Step 3: Upload Config File**
-
-Open a **NEW PowerShell window** and run this:
-
-```powershell
-scp "C:\Users\ashiq\Documents\Clients\MS Ayub Enterprise\backend\config\config.env" root@163.227.239.217:/root/ms_ayub_enterpirse/backend/config/
-```
-
-When prompted:
-- Type `yes` and press Enter (first time only)
-- Password: `J5cWT);9ykPj03`
-
-You should see: `config.env  100% ...`
-
----
-
-## **Step 4: Build & Start Server**
-
-Go back to your **SSH window** and copy-paste this entire command:
-
-```bash
-cd /root/ms_ayub_enterpirse/backend && go build -o msae-backend ./cmd/main.go && systemctl stop msae-backend 2>/dev/null; cat > /etc/systemd/system/msae-backend.service << 'EOF'
+cd /tmp && wget -q https://go.dev/dl/go1.26.4.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz && echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc && cd /root && rm -rf ms_ayub_enterpirse && git clone https://github.com/nuaiman/ms_ayub_enterpirse.git && cd /root/ms_ayub_enterpirse/backend && go build -o msae-backend ./cmd/main.go && systemctl stop msae-backend 2>/dev/null; cat > /etc/systemd/system/msae-backend.service << 'EOF'
 [Unit]
 Description=MS Ayub Enterprise Backend
 After=network.target
@@ -61,36 +25,12 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl daemon-reload && systemctl start msae-backend && systemctl enable msae-backend && systemctl stop firewalld 2>/dev/null; systemctl disable firewalld 2>/dev/null && echo "✅ Server running at http://163.227.239.217:8080"
+systemctl daemon-reload && systemctl start msae-backend && systemctl enable msae-backend && systemctl stop firewalld 2>/dev/null; systemctl disable firewalld 2>/dev/null && echo "✅ Done! Open http://163.227.239.217:8080"
 ```
-
-Wait 1-2 minutes for the build. You should see: `✅ Server running at http://163.227.239.217:8080`
 
 ---
 
-## **Step 5: Open Browser**
+## Step 3: Open Browser
 
 Go to: **http://163.227.239.217:8080**
 
----
-
-## **Check if it's working:**
-
-```bash
-curl -s http://localhost:8080/api/health
-```
-
----
-
-## **Useful Commands:**
-
-| Action | Command |
-|--------|---------|
-| Check status | `systemctl status msae-backend` |
-| Restart | `systemctl restart msae-backend` |
-| View logs | `journalctl -u msae-backend -f` |
-| Test health | `curl http://localhost:8080/api/health` |
-
----
-
-**That's it! 5 steps total.** 🎉
