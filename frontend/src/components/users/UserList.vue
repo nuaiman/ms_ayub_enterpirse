@@ -18,12 +18,8 @@
           </svg>
           <input v-model="searchQuery" type="text" placeholder="Search users..."
             class="input w-full sm:w-64 pl-9 pr-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-transparent placeholder:text-muted" />
-          <button
-            v-if="searchQuery"
-            @click="searchQuery = ''"
-            type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
-          >
+          <button v-if="searchQuery" @click="searchQuery = ''" type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -87,23 +83,21 @@
 
     <!-- TABLE -->
     <div class="flex-1 min-h-0 overflow-auto">
-      <div class="min-w-[768px]">
-        <!-- TABLE HEADER -->
+      <div class="min-w-3xl">
         <div
           class="grid grid-cols-12 items-center py-3 px-3 border-b border-divider text-xs font-semibold text-muted uppercase tracking-wider shrink-0 bg-surface-alt rounded-t-lg">
           <div class="col-span-3 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
-            @click="toggleSort('name')">
-            Name
+            @click="toggleSort('name')">Name
             <svg v-if="sortField === 'name'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'desc' }"
               fill="currentColor" viewBox="0 0 24 24">
               <path d="M7 10l5 5 5-5z" />
             </svg>
           </div>
           <div class="col-span-2">Role</div>
+          <div class="col-span-1">Salary</div>
           <div class="col-span-2">Status</div>
-          <div class="col-span-3 cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
-            @click="toggleSort('created_at')">
-            Created
+          <div class="col-span-2 cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
+            @click="toggleSort('created_at')">Created
             <svg v-if="sortField === 'created_at'" class="w-3 h-3" :class="{ 'rotate-180': sortDirection === 'desc' }"
               fill="currentColor" viewBox="0 0 24 24">
               <path d="M7 10l5 5 5-5z" />
@@ -112,7 +106,6 @@
           <div class="col-span-2 text-right pr-0.5">Actions</div>
         </div>
 
-        <!-- LOADING -->
         <div v-if="loading" class="flex items-center justify-center py-12">
           <div class="text-center space-y-4">
             <svg class="animate-spin w-10 h-10 text-accent mx-auto" fill="none" viewBox="0 0 24 24">
@@ -124,7 +117,6 @@
           </div>
         </div>
 
-        <!-- EMPTY -->
         <div v-else-if="filteredUsers.length === 0" class="flex items-center justify-center py-12">
           <div class="text-center space-y-3">
             <div class="w-16 h-16 mx-auto rounded-full bg-surface-alt flex items-center justify-center">
@@ -138,7 +130,6 @@
           </div>
         </div>
 
-        <!-- USER LIST -->
         <div v-else>
           <UserRow v-for="user in filteredUsers" :key="user.id" :user="user" @user-updated="handleUserUpdated"
             @view-user="openDetailDialog" />
@@ -146,7 +137,6 @@
       </div>
     </div>
 
-    <!-- FOOTER -->
     <div v-if="!loading && filteredUsers.length > 0"
       class="flex items-center justify-between py-3 px-1 border-t border-divider shrink-0">
       <p class="text-xs text-muted">Showing {{ filteredUsers.length }} of {{ usersStore.users.length }} users</p>
@@ -162,12 +152,10 @@
       </button>
     </div>
 
-    <!-- CREATE USER DIALOG -->
     <BaseDialog v-model="showCreateDialog" size="lg">
       <CreateUserForm @user-created="handleUserCreated" />
     </BaseDialog>
 
-    <!-- USER DETAIL DIALOG -->
     <BaseDialog v-model="showDetailDialog" size="lg">
       <div v-if="selectedUser" class="space-y-5">
         <div class="flex items-center gap-4">
@@ -214,6 +202,11 @@
           <div class="space-y-1 md:col-span-2">
             <p class="text-xs text-muted uppercase tracking-wider">Address</p>
             <p class="text-sm text-primary">{{ selectedUser.address || '—' }}</p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-xs text-muted uppercase tracking-wider">Monthly Salary</p>
+            <p class="text-sm text-primary">{{ selectedUser.monthly_salary ? '৳' +
+              selectedUser.monthly_salary.toFixed(2) : '—' }}</p>
           </div>
           <div class="space-y-1">
             <p class="text-xs text-muted uppercase tracking-wider">ID Type</p>
@@ -306,37 +299,19 @@ const applySort = (key: string) => {
 const copyToClipboard = async () => {
   const users = filteredUsers.value
   if (users.length === 0) return
-
-  // Header row
-  const headers = ['ID', 'Name', 'Username', 'Role', 'Status', 'Email', 'Phone', 'Address', 'ID Type', 'ID Number', 'Created']
-
-  // Data rows
+  const headers = ['ID', 'Name', 'Username', 'Role', 'Status', 'Email', 'Phone', 'Address', 'Salary', 'ID Type', 'ID Number', 'Created']
   const rows = users.map(u => [
-    u.id,
-    u.name,
-    u.username,
-    u.role,
-    u.is_active ? 'Active' : 'Inactive',
-    u.email || '',
-    u.phone || '',
-    u.address || '',
-    u.id_type || '',
-    u.id_number || '',
-    formatDate(u.created_at),
+    u.id, u.name, u.username, u.role, u.is_active ? 'Active' : 'Inactive',
+    u.email || '', u.phone || '', u.address || '', u.monthly_salary || '',
+    u.id_type || '', u.id_number || '', formatDate(u.created_at),
   ])
-
-  // Build TSV (tab-separated values) - pastes perfectly into spreadsheets
-  const tsv = [headers, ...rows]
-    .map(row => row.map(cell => String(cell).replace(/\t/g, ' ').replace(/\n/g, ' ')).join('\t'))
-    .join('\n')
-
+  const tsv = [headers, ...rows].map(row => row.map(cell => String(cell).replace(/\t/g, ' ').replace(/\n/g, ' ')).join('\t')).join('\n')
   try {
     await navigator.clipboard.writeText(tsv)
     copied.value = true
-    push.success('Copied to clipboard! Paste into any spreadsheet')
+    push.success('Copied to clipboard!')
     setTimeout(() => { copied.value = false }, 2000)
   } catch {
-    // Fallback for older browsers
     const textarea = document.createElement('textarea')
     textarea.value = tsv
     textarea.style.position = 'fixed'

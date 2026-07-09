@@ -18,21 +18,11 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Name -->
-            <div class="space-y-1.5">
+            <div class="space-y-1.5 md:col-span-2">
               <label class="text-sm font-medium text-primary">
                 Full Name <span class="text-warning-text">*</span>
               </label>
               <input v-model="name" type="text" placeholder="John Doe" required class="input w-full px-3 py-2 rounded-lg placeholder:text-muted
-                       focus:outline-none focus:ring-2 focus:ring-accent
-                       focus:border-transparent transition-all duration-200" />
-            </div>
-
-            <!-- Username -->
-            <div class="space-y-1.5">
-              <label class="text-sm font-medium text-primary">
-                Username <span class="text-warning-text">*</span>
-              </label>
-              <input v-model="username" type="text" placeholder="johndoe" required class="input w-full px-3 py-2 rounded-lg placeholder:text-muted
                        focus:outline-none focus:ring-2 focus:ring-accent
                        focus:border-transparent transition-all duration-200" />
             </div>
@@ -70,6 +60,16 @@
           </h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Username -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">
+                Username <span class="text-warning-text">*</span>
+              </label>
+              <input v-model="username" type="text" placeholder="johndoe" required class="input w-full px-3 py-2 rounded-lg placeholder:text-muted
+                       focus:outline-none focus:ring-2 focus:ring-accent
+                       focus:border-transparent transition-all duration-200" />
+            </div>
+
             <!-- Password -->
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-primary">
@@ -108,6 +108,17 @@
                 <option value="accounts" class="bg-surface text-primary">Accounts</option>
                 <option v-if="canCreateManager" value="manager" class="bg-surface text-primary">Manager</option>
               </select>
+            </div>
+
+            <!-- Monthly Salary -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Monthly Salary</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">৳</span>
+                <input v-model.number="monthly_salary" type="number" step="0.01" min="0" placeholder="0.00" class="input w-full pl-7 pr-3 py-2 rounded-lg placeholder:text-muted
+                         focus:outline-none focus:ring-2 focus:ring-accent
+                         focus:border-transparent transition-all duration-200" />
+              </div>
             </div>
           </div>
         </div>
@@ -152,14 +163,11 @@
 
           <div class="space-y-4">
             <div class="flex items-start gap-4">
-              <!-- Preview -->
               <div class="shrink-0">
                 <div v-if="imagePreview" class="relative w-24 h-24 rounded-lg overflow-hidden border border-default">
                   <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                   <button type="button" @click="removeImage" class="absolute top-1 right-1 w-5 h-5 bg-warning-text text-white rounded-full
-                           flex items-center justify-center text-xs hover:opacity-90 transition-opacity">
-                    ×
-                  </button>
+                           flex items-center justify-center text-xs hover:opacity-90 transition-opacity">×</button>
                 </div>
                 <div v-else class="w-24 h-24 rounded-lg border-2 border-dashed border-default
                          flex items-center justify-center bg-surface-alt">
@@ -170,7 +178,6 @@
                 </div>
               </div>
 
-              <!-- Upload Controls -->
               <div class="flex-1 space-y-3">
                 <div>
                   <label class="text-sm font-medium text-primary block mb-1.5">Upload Image</label>
@@ -188,13 +195,10 @@
                     </label>
                   </div>
                 </div>
-
-                <!-- Upload Progress -->
                 <div v-if="uploading" class="w-full bg-surface-alt rounded-full h-1.5 overflow-hidden">
                   <div class="bg-accent h-full rounded-full transition-all duration-300"
                     :style="{ width: uploadProgress + '%' }"></div>
                 </div>
-
                 <p v-if="uploadError" class="text-xs text-warning-text">{{ uploadError }}</p>
                 <p v-else-if="uploadSuccess" class="text-xs text-success-text">{{ uploadSuccess }}</p>
               </div>
@@ -229,7 +233,6 @@
   </div>
 </template>
 
-
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { IDType } from '@/types/auth'
@@ -257,6 +260,7 @@ const phone = ref('')
 const address = ref('')
 const id_type = ref<IDType | ''>('')
 const id_number = ref('')
+const monthly_salary = ref<number | null>(null)
 
 // Image upload state
 const imageFile = ref<File | null>(null)
@@ -320,6 +324,7 @@ const resetForm = () => {
   address.value = ''
   id_type.value = ''
   id_number.value = ''
+  monthly_salary.value = null
   removeImage()
   role.value = 'staff'
   showPassword.value = false
@@ -341,6 +346,7 @@ const submit = async () => {
       address: address.value || null,
       id_type: id_type.value || null,
       id_number: id_number.value || null,
+      monthly_salary: monthly_salary.value || 0,
       image_url: null,
     })
 
@@ -366,7 +372,7 @@ const submit = async () => {
 
     push.success('User created successfully!')
     resetForm()
-    emit('user-created') // 👈 tells parent to close dialog
+    emit('user-created')
   } catch (error) {
     console.error('Error creating user:', error)
     push.error('Failed to create user')

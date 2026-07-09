@@ -5,124 +5,184 @@ import (
 	"backend/internal/models"
 	"backend/internal/utils"
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
 
 func (h *Handler) CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 	type request struct {
-		// Optional fields
-		CustomerID      *int64   `json:"customer_id"`
-		DurationType    *string  `json:"duration_type"`
-		Duration        *int     `json:"duration"`
-		Price           *float64 `json:"price"`
-		SecurityDeposit *float64 `json:"security_deposit"`
-		EstimatedValue  *float64 `json:"estimated_value"`
+		// Customer Fields
+		Name          string  `json:"name"`
+		CustomerPhone string  `json:"customer_phone"`
+		CustomerEmail *string `json:"customer_email"`
 
-		// Required field
-		Name string `json:"name"`
+		// Category
+		Category    *string `json:"category"`
+		Subcategory *string `json:"subcategory"`
 
-		// Optional fields with defaults
-		QuantityUnit string   `json:"quantity_unit"`
-		Quantity     int      `json:"quantity"`
-		Weight       *float64 `json:"weight"`
-		Width        *float64 `json:"width"`
-		Height       *float64 `json:"height"`
-		Length       *float64 `json:"length"`
-		Notes        *string  `json:"notes"`
-		ImageURL     *string  `json:"image_url"`
+		// Item Details
+		QuantityUnit string `json:"quantity_unit"`
+		Quantity     int    `json:"quantity"`
+
+		// Dimensions
+		Weight        *float64 `json:"weight"`
+		WeightUnit    *string  `json:"weight_unit"`
+		Width         *float64 `json:"width"`
+		Height        *float64 `json:"height"`
+		Length        *float64 `json:"length"`
+		DimensionUnit *string  `json:"dimension_unit"`
+
+		// Storage Contract
+		DurationType *string `json:"duration_type"`
+		Duration     *int    `json:"duration"`
+		StartDate    *string `json:"start_date"`
+		Amount       float64 `json:"amount"`
+		Deposit      float64 `json:"deposit"`
+		CustomerPaid float64 `json:"customer_paid"`
+
+		// Notes and Image
+		Notes    *string `json:"notes"`
+		ImageURL *string `json:"image_url"`
 	}
 
 	var req request
 
 	if err := utils.ReadJson(w, r, &req); err != nil {
+		log.Printf("❌ Failed to parse request body: %v", err)
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	// Validate required field
+	log.Printf("📝 CreateItem request: name=%s, phone=%s, amount=%.2f, customer_paid=%.2f",
+		req.Name, req.CustomerPhone, req.Amount, req.CustomerPaid)
+
+	// Validate required fields
 	if req.Name == "" {
+		log.Printf("❌ Validation failed: name is required")
 		utils.ErrorJson(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	// Validate optional customer if provided
-	if req.CustomerID != nil {
-		customer, err := h.app.Models.Customer.GetByID(r.Context(), *req.CustomerID)
-		if err != nil || customer == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
+	if req.CustomerPhone == "" {
+		log.Printf("❌ Validation failed: customer_phone is required")
+		utils.ErrorJson(w, http.StatusBadRequest, "customer_phone is required")
+		return
+	}
+
+	// Validate quantity unit
+	validUnits := map[string]bool{
+		"bag": true, "bottle": true, "box": true, "can": true, "carton": true,
+		"cup": true, "dozen": true, "gallon": true, "pack": true, "pair": true,
+		"pcs": true, "roll": true, "set": true, "sheet": true, "unit": true,
+	}
+
+	if req.QuantityUnit == "" {
+		req.QuantityUnit = "pcs"
+	} else if !validUnits[req.QuantityUnit] {
+		log.Printf("❌ Validation failed: invalid quantity_unit '%s'", req.QuantityUnit)
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid quantity_unit")
+		return
+	}
+
+	// Validate weight unit if provided
+	if req.WeightUnit != nil {
+		validWeightUnits := map[string]bool{
+			"mg": true, "g": true, "oz": true, "lb": true, "kg": true, "ton": true,
+		}
+		if !validWeightUnits[*req.WeightUnit] {
+			log.Printf("❌ Validation failed: invalid weight_unit '%s'", *req.WeightUnit)
+			utils.ErrorJson(w, http.StatusBadRequest, "invalid weight_unit")
 			return
 		}
 	}
 
-	// Validate optional contract fields if provided
-	if req.DurationType != nil {
+	// Validate dimension unit if provided
+	if req.DimensionUnit != nil {
+		validDimUnits := map[string]bool{
+			"mm": true, "cm": true, "in": true, "ft": true, "m": true, "yd": true, "km": true,
+		}
+		if !validDimUnits[*req.DimensionUnit] {
+			log.Printf("❌ Validation failed: invalid dimension_unit '%s'", *req.DimensionUnit)
+			utils.ErrorJson(w, http.StatusBadRequest, "invalid dimension_unit")
+			return
+		}
+	}
+
+	// Validate storage contract fields if provided
+	var status *string
+	if req.DurationType != nil && *req.DurationType != "" {
 		validTypes := map[string]bool{
 			"day": true, "week": true, "month": true, "year": true,
 		}
 		if !validTypes[*req.DurationType] {
+			log.Printf("❌ Validation failed: invalid duration_type '%s'", *req.DurationType)
 			utils.ErrorJson(w, http.StatusBadRequest, "invalid duration_type")
 			return
 		}
-	}
-
-	// Validate quantity unit if provided
-	if req.QuantityUnit != "" {
-		validUnits := map[string]bool{
-			"pcs": true, "g": true, "kg": true, "ton": true, "ml": true, "liter": true,
-		}
-		if !validUnits[req.QuantityUnit] {
-			utils.ErrorJson(w, http.StatusBadRequest, "invalid quantity_unit")
+		if req.Duration == nil || *req.Duration <= 0 {
+			log.Printf("❌ Validation failed: duration is required when duration_type is provided")
+			utils.ErrorJson(w, http.StatusBadRequest, "duration is required when duration_type is provided")
 			return
 		}
+		if req.Amount <= 0 {
+			log.Printf("❌ Validation failed: amount must be greater than 0 for storage contracts")
+			utils.ErrorJson(w, http.StatusBadRequest, "amount must be greater than 0 for storage contracts")
+			return
+		}
+		defaultStatus := "active"
+		status = &defaultStatus
 	}
 
 	// Set defaults
-	if req.QuantityUnit == "" {
-		req.QuantityUnit = "pcs"
-	}
 	if req.Quantity == 0 {
 		req.Quantity = 1
 	}
 
 	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
 	if !ok {
+		log.Printf("❌ Failed to get userID from context")
 		utils.ErrorJson(w, http.StatusUnauthorized, "invalid user context")
 		return
 	}
 
-	// Set default status if contract fields are provided
-	var status *string
-	if req.DurationType != nil {
-		defaultStatus := "active"
-		status = &defaultStatus
-	}
+	log.Printf("📝 Creating item with userID: %d", userID)
 
 	item := &models.Item{
-		UserID:          &userID,
-		Notes:           req.Notes,
-		CustomerID:      req.CustomerID,
-		DurationType:    req.DurationType,
-		Duration:        req.Duration,
-		Price:           req.Price,
-		SecurityDeposit: req.SecurityDeposit,
-		EstimatedValue:  req.EstimatedValue,
-		Status:          status,
-		Name:            req.Name,
-		QuantityUnit:    req.QuantityUnit,
-		Quantity:        req.Quantity,
-		Weight:          req.Weight,
-		Width:           req.Width,
-		Height:          req.Height,
-		Length:          req.Length,
-		ImageURL:        req.ImageURL,
+		UserID:        userID,
+		Notes:         req.Notes,
+		Name:          req.Name,
+		CustomerPhone: req.CustomerPhone,
+		CustomerEmail: req.CustomerEmail,
+		Category:      req.Category,
+		Subcategory:   req.Subcategory,
+		QuantityUnit:  req.QuantityUnit,
+		Quantity:      req.Quantity,
+		Weight:        req.Weight,
+		WeightUnit:    req.WeightUnit,
+		Width:         req.Width,
+		Height:        req.Height,
+		Length:        req.Length,
+		DimensionUnit: req.DimensionUnit,
+		DurationType:  req.DurationType,
+		Duration:      req.Duration,
+		StartDate:     req.StartDate,
+		Amount:        req.Amount,
+		Deposit:       req.Deposit,
+		CustomerPaid:  req.CustomerPaid,
+		Status:        status,
+		ImageURL:      req.ImageURL,
 	}
 
 	id, err := h.app.Models.Item.Insert(r.Context(), item)
 	if err != nil {
+		log.Printf("❌ Failed to insert item: %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to create item")
 		return
 	}
+
+	log.Printf("✅ Item created successfully with ID: %d", id)
 
 	item.ID = id
 
@@ -130,12 +190,9 @@ func (h *Handler) CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
 
-	description := "Created item: " + req.Name
-	if item.HasCustomer() {
-		description += " for customer #" + formatInt64(*req.CustomerID)
-	}
+	description := fmt.Sprintf("Created item for %s (%s)", req.Name, req.CustomerPhone)
 	if item.HasContract() {
-		description += " (with contract)"
+		description += fmt.Sprintf(" - Storage contract: %d %s(s) for $%.2f", *req.Duration, *req.DurationType, req.Amount)
 	}
 
 	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
@@ -183,21 +240,38 @@ func (h *Handler) GetAllItemsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 	type request struct {
-		CustomerID      *int64   `json:"customer_id"`
-		Name            *string  `json:"name"`
-		DurationType    *string  `json:"duration_type"`
-		Duration        *int     `json:"duration"`
-		Price           *float64 `json:"price"`
-		SecurityDeposit *float64 `json:"security_deposit"`
-		EstimatedValue  *float64 `json:"estimated_value"`
-		Status          *string  `json:"status"`
-		QuantityUnit    *string  `json:"quantity_unit"`
-		Quantity        *int     `json:"quantity"`
-		Weight          *float64 `json:"weight"`
-		Width           *float64 `json:"width"`
-		Height          *float64 `json:"height"`
-		Length          *float64 `json:"length"`
-		Notes           *string  `json:"notes"`
+		// Customer Fields
+		Name          *string `json:"name"`
+		CustomerPhone *string `json:"customer_phone"`
+		CustomerEmail *string `json:"customer_email"`
+
+		// Category
+		Category    *string `json:"category"`
+		Subcategory *string `json:"subcategory"`
+
+		// Item Details
+		QuantityUnit *string `json:"quantity_unit"`
+		Quantity     *int    `json:"quantity"`
+
+		// Dimensions
+		Weight        *float64 `json:"weight"`
+		WeightUnit    *string  `json:"weight_unit"`
+		Width         *float64 `json:"width"`
+		Height        *float64 `json:"height"`
+		Length        *float64 `json:"length"`
+		DimensionUnit *string  `json:"dimension_unit"`
+
+		// Storage Contract
+		DurationType *string  `json:"duration_type"`
+		Duration     *int     `json:"duration"`
+		StartDate    *string  `json:"start_date"`
+		Amount       *float64 `json:"amount"`
+		Deposit      *float64 `json:"deposit"`
+		CustomerPaid *float64 `json:"customer_paid"`
+		Status       *string  `json:"status"`
+
+		// Notes
+		Notes *string `json:"notes"`
 	}
 
 	var req request
@@ -213,16 +287,48 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate optional customer if provided
-	if req.CustomerID != nil {
-		customer, err := h.app.Models.Customer.GetByID(r.Context(), *req.CustomerID)
-		if err != nil || customer == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
+	// Validate customer_phone if provided
+	if req.CustomerPhone != nil && *req.CustomerPhone == "" {
+		utils.ErrorJson(w, http.StatusBadRequest, "customer_phone cannot be empty")
+		return
+	}
+
+	// Validate quantity unit if provided
+	if req.QuantityUnit != nil {
+		validUnits := map[string]bool{
+			"bag": true, "bottle": true, "box": true, "can": true, "carton": true,
+			"cup": true, "dozen": true, "gallon": true, "pack": true, "pair": true,
+			"pcs": true, "roll": true, "set": true, "sheet": true, "unit": true,
+		}
+		if !validUnits[*req.QuantityUnit] {
+			utils.ErrorJson(w, http.StatusBadRequest, "invalid quantity_unit")
 			return
 		}
 	}
 
-	// Validate optional contract fields if provided
+	// Validate weight unit if provided
+	if req.WeightUnit != nil {
+		validWeightUnits := map[string]bool{
+			"mg": true, "g": true, "oz": true, "lb": true, "kg": true, "ton": true,
+		}
+		if !validWeightUnits[*req.WeightUnit] {
+			utils.ErrorJson(w, http.StatusBadRequest, "invalid weight_unit")
+			return
+		}
+	}
+
+	// Validate dimension unit if provided
+	if req.DimensionUnit != nil {
+		validDimUnits := map[string]bool{
+			"mm": true, "cm": true, "in": true, "ft": true, "m": true, "yd": true, "km": true,
+		}
+		if !validDimUnits[*req.DimensionUnit] {
+			utils.ErrorJson(w, http.StatusBadRequest, "invalid dimension_unit")
+			return
+		}
+	}
+
+	// Validate duration_type if provided
 	if req.DurationType != nil {
 		validTypes := map[string]bool{
 			"day": true, "week": true, "month": true, "year": true,
@@ -233,23 +339,13 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Validate status if provided
 	if req.Status != nil {
 		validStatuses := map[string]bool{
-			"active": true, "completed": true, "cancelled": true,
+			"active": true, "complete": true,
 		}
 		if !validStatuses[*req.Status] {
 			utils.ErrorJson(w, http.StatusBadRequest, "invalid status")
-			return
-		}
-	}
-
-	// Validate quantity unit if provided
-	if req.QuantityUnit != nil {
-		validUnits := map[string]bool{
-			"pcs": true, "g": true, "kg": true, "ton": true, "ml": true, "liter": true,
-		}
-		if !validUnits[*req.QuantityUnit] {
-			utils.ErrorJson(w, http.StatusBadRequest, "invalid quantity_unit")
 			return
 		}
 	}
@@ -274,47 +370,22 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Build update map with only fields that were provided
 	updates := make(map[string]interface{})
+	updates["updated_at"] = time.Now()
 
-	// Add fields that were provided
 	if req.Name != nil {
 		updates["name"] = *req.Name
 	}
-	if req.CustomerID != nil {
-		updates["customer_id"] = *req.CustomerID
-	} else if req.CustomerID == nil && existing.CustomerID != nil {
-		// Explicitly set to NULL if customer_id was sent as null
-		updates["customer_id"] = nil
+	if req.CustomerPhone != nil {
+		updates["customer_phone"] = *req.CustomerPhone
 	}
-	if req.DurationType != nil {
-		updates["duration_type"] = *req.DurationType
-	} else if req.DurationType == nil && existing.DurationType != nil {
-		// Explicitly set to NULL if duration_type was sent as null
-		updates["duration_type"] = nil
+	if req.CustomerEmail != nil {
+		updates["customer_email"] = *req.CustomerEmail
 	}
-	if req.Duration != nil {
-		updates["duration"] = *req.Duration
-	} else if req.Duration == nil && existing.Duration != nil {
-		updates["duration"] = nil
+	if req.Category != nil {
+		updates["category"] = *req.Category
 	}
-	if req.Price != nil {
-		updates["price"] = *req.Price
-	} else if req.Price == nil && existing.Price != nil {
-		updates["price"] = nil
-	}
-	if req.SecurityDeposit != nil {
-		updates["security_deposit"] = *req.SecurityDeposit
-	} else if req.SecurityDeposit == nil && existing.SecurityDeposit != nil {
-		updates["security_deposit"] = nil
-	}
-	if req.EstimatedValue != nil {
-		updates["estimated_value"] = *req.EstimatedValue
-	} else if req.EstimatedValue == nil && existing.EstimatedValue != nil {
-		updates["estimated_value"] = nil
-	}
-	if req.Status != nil {
-		updates["status"] = *req.Status
-	} else if req.Status == nil && existing.Status != nil {
-		updates["status"] = nil
+	if req.Subcategory != nil {
+		updates["subcategory"] = *req.Subcategory
 	}
 	if req.QuantityUnit != nil {
 		updates["quantity_unit"] = *req.QuantityUnit
@@ -324,32 +395,46 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Weight != nil {
 		updates["weight"] = *req.Weight
-	} else if req.Weight == nil && existing.Weight != nil {
-		updates["weight"] = nil
+	}
+	if req.WeightUnit != nil {
+		updates["weight_unit"] = *req.WeightUnit
 	}
 	if req.Width != nil {
 		updates["width"] = *req.Width
-	} else if req.Width == nil && existing.Width != nil {
-		updates["width"] = nil
 	}
 	if req.Height != nil {
 		updates["height"] = *req.Height
-	} else if req.Height == nil && existing.Height != nil {
-		updates["height"] = nil
 	}
 	if req.Length != nil {
 		updates["length"] = *req.Length
-	} else if req.Length == nil && existing.Length != nil {
-		updates["length"] = nil
+	}
+	if req.DimensionUnit != nil {
+		updates["dimension_unit"] = *req.DimensionUnit
+	}
+	if req.DurationType != nil {
+		updates["duration_type"] = *req.DurationType
+	}
+	if req.Duration != nil {
+		updates["duration"] = *req.Duration
+	}
+	if req.StartDate != nil {
+		updates["start_date"] = *req.StartDate
+	}
+	if req.Amount != nil {
+		updates["amount"] = *req.Amount
+	}
+	if req.Deposit != nil {
+		updates["deposit"] = *req.Deposit
+	}
+	if req.CustomerPaid != nil {
+		updates["customer_paid"] = *req.CustomerPaid
+	}
+	if req.Status != nil {
+		updates["status"] = *req.Status
 	}
 	if req.Notes != nil {
 		updates["notes"] = *req.Notes
-	} else if req.Notes == nil && existing.Notes != nil {
-		updates["notes"] = nil
 	}
-
-	// Always update updated_at
-	updates["updated_at"] = time.Now()
 
 	// Only update if there are changes (more than just updated_at)
 	if len(updates) > 1 {
@@ -360,27 +445,13 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Handle status change if status was provided and item has contract
-	if req.Status != nil && existing.Status != nil && *req.Status != *existing.Status {
-		var endedAt *time.Time
-		if (*req.Status == "completed" || *req.Status == "cancelled") && *existing.Status == "active" {
-			now := time.Now()
-			endedAt = &now
-		}
-		err = h.app.Models.Item.UpdateStatus(r.Context(), itemID, *req.Status, endedAt)
-		if err != nil {
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to update item status")
-			return
-		}
-	}
-
 	// Audit log
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
 	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
-		Description: "Updated item: " + existing.Name,
+		Description: fmt.Sprintf("Updated item for %s", existing.Name),
 		EntityType:  "items",
 		EntityID:    itemID,
 		IPAddress:   &ip,
@@ -409,7 +480,7 @@ func (h *Handler) ChangeItemStatusHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	validStatuses := map[string]bool{
-		"active": true, "completed": true, "cancelled": true,
+		"active": true, "complete": true,
 	}
 	if !validStatuses[req.Status] {
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid status")
@@ -428,9 +499,9 @@ func (h *Handler) ChangeItemStatusHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Check if item has a contract
+	// Check if item has a storage contract
 	if existing.Status == nil {
-		utils.ErrorJson(w, http.StatusBadRequest, "item does not have a contract")
+		utils.ErrorJson(w, http.StatusBadRequest, "item does not have a storage contract")
 		return
 	}
 
@@ -440,13 +511,7 @@ func (h *Handler) ChangeItemStatusHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var endedAt *time.Time
-	if (req.Status == "completed" || req.Status == "cancelled") && *existing.Status == "active" {
-		now := time.Now()
-		endedAt = &now
-	}
-
-	err = h.app.Models.Item.UpdateStatus(r.Context(), itemID, req.Status, endedAt)
+	err = h.app.Models.Item.UpdateStatus(r.Context(), itemID, req.Status)
 	if err != nil {
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to update item status")
 		return
@@ -458,7 +523,7 @@ func (h *Handler) ChangeItemStatusHandler(w http.ResponseWriter, r *http.Request
 	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
-		Description: "Changed item #" + formatInt64(itemID) + " status to " + req.Status,
+		Description: fmt.Sprintf("Changed item #%d status to %s", itemID, req.Status),
 		EntityType:  "items",
 		EntityID:    itemID,
 		IPAddress:   &ip,
@@ -505,7 +570,7 @@ func (h *Handler) DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
 		UserID:      userID,
 		Action:      "delete",
-		Description: "Deleted item: " + existing.Name,
+		Description: fmt.Sprintf("Deleted item for %s (%s)", existing.Name, existing.CustomerPhone),
 		EntityType:  "items",
 		EntityID:    itemID,
 		IPAddress:   &ip,

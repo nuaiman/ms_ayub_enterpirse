@@ -8,24 +8,66 @@
     <div class="card rounded-2xl shadow-sm p-6">
       <form @submit.prevent="submit" class="space-y-6">
 
+        <!-- Salary Toggle -->
+        <div class="flex items-center gap-3 pb-4 border-b border-divider">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="is_salary" class="sr-only peer">
+            <div
+              class="w-11 h-6 bg-surface-alt peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-accent after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all">
+            </div>
+          </label>
+          <span class="text-sm font-medium text-primary">This is a salary payment</span>
+        </div>
+
+        <!-- Salary Fields -->
+        <div v-if="is_salary" class="space-y-4 pb-4 border-b border-divider">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Employee <span class="text-warning-text">*</span></label>
+              <select v-model="salary_user_id"
+                class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                <option :value="null" disabled>Select employee</option>
+                <option v-for="user in staffUsers" :key="user.id" :value="user.id">
+                  {{ user.name }} ({{ user.role }}) - ৳{{ user.monthly_salary || 0 }}
+                </option>
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Month/Year <span
+                  class="text-warning-text">*</span></label>
+              <input v-model="salary_month_year" type="month"
+                class="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+          </div>
+          <p v-if="selectedUser" class="text-xs text-muted">
+            Monthly salary: ৳{{ selectedUser.monthly_salary || 0 }}
+          </p>
+        </div>
+
+        <!-- Expense Details -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Title -->
           <div class="space-y-1.5 md:col-span-2">
             <label class="text-sm font-medium text-primary">Title <span class="text-warning-text">*</span></label>
-            <input v-model="title" type="text" placeholder="Expense title" required
+            <input v-model="title" type="text"
+              :placeholder="is_salary ? 'e.g. March 2024 Salary - John' : 'Expense title'" required
               class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
           </div>
 
+          <!-- Category -->
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-primary">Category <span class="text-warning-text">*</span></label>
-            <select v-model="category" required
-              class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
-              <option value="rent" class="bg-surface text-primary">Rent</option>
-              <option value="salary" class="bg-surface text-primary">Salary</option>
-              <option value="bill" class="bg-surface text-primary">Bill</option>
-              <option value="other" class="bg-surface text-primary">Other</option>
-            </select>
+            <label class="text-sm font-medium text-primary">Category</label>
+            <div class="relative">
+              <input v-model="category" type="text" placeholder="e.g. office supplies, utilities..."
+                list="category-list"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+              <datalist id="category-list">
+                <option v-for="cat in categorySuggestions" :key="cat" :value="cat" />
+              </datalist>
+            </div>
           </div>
 
+          <!-- Amount -->
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Amount <span class="text-warning-text">*</span></label>
             <div class="relative">
@@ -35,15 +77,16 @@
             </div>
           </div>
 
+          <!-- Date -->
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Date <span class="text-warning-text">*</span></label>
             <input v-model="expense_date" type="date" required
               class="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
           </div>
 
+          <!-- Notes -->
           <div class="space-y-1.5 md:col-span-2">
-            <label class="text-sm font-medium text-primary">Notes <span
-                class="text-xs font-normal text-muted">(Optional)</span></label>
+            <label class="text-sm font-medium text-primary">Notes</label>
             <textarea v-model="notes" rows="2" placeholder="Add notes..."
               class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"></textarea>
           </div>
@@ -59,7 +102,7 @@
               <div v-if="imagePreview" class="relative w-24 h-24 rounded-lg overflow-hidden border border-default">
                 <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                 <button type="button" @click="removeImage"
-                  class="absolute top-1 right-1 w-5 h-5 bg-warning-text text-white rounded-full flex items-center justify-center text-xs hover:opacity-90">×</button>
+                  class="absolute top-1 right-1 w-5 h-5 bg-warning-text text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">×</button>
               </div>
               <div v-else
                 class="w-24 h-24 rounded-lg border-2 border-dashed border-default flex items-center justify-center bg-surface-alt">
@@ -70,37 +113,33 @@
               </div>
             </div>
             <div class="flex-1 space-y-3">
-              <label class="text-sm font-medium text-primary block">Upload Receipt</label>
-              <div class="flex gap-2">
-                <label
-                  class="button px-4 py-2 text-sm font-medium rounded-lg cursor-pointer hover-surface transition-all duration-200 inline-flex items-center gap-2"
-                  :class="{ 'opacity-50 cursor-not-allowed': uploading }">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  {{ uploading ? 'Uploading...' : 'Choose File' }}
-                  <input type="file" accept="image/*" class="hidden" @change="handleFileSelect" :disabled="uploading" />
-                </label>
-              </div>
-              <div v-if="uploading" class="w-full bg-surface-alt rounded-full h-1.5 overflow-hidden">
-                <div class="bg-accent h-full rounded-full transition-all duration-300"
-                  :style="{ width: uploadProgress + '%' }"></div>
-              </div>
-              <p v-if="uploadError" class="text-xs text-warning-text">{{ uploadError }}</p>
+              <label
+                class="button px-4 py-2 text-sm font-medium rounded-lg cursor-pointer hover-surface transition-all duration-200 inline-flex items-center gap-2"
+                :class="{ 'opacity-50 cursor-not-allowed': uploading }">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {{ uploading ? 'Uploading...' : 'Choose File' }}
+                <input type="file" accept="image/*" class="hidden" @change="handleFileSelect" :disabled="uploading" />
+              </label>
             </div>
           </div>
         </div>
 
+        <!-- Actions -->
         <div class="flex items-center justify-end gap-3 pt-4">
           <button type="button" @click="resetForm"
             class="button px-4 py-2 text-sm font-medium rounded-lg hover-surface transition-all duration-200">Clear</button>
-          <button type="submit" :disabled="submitting || !title || !amount || amount <= 0"
+          <button type="submit"
+            :disabled="submitting || !title || !amount || amount <= 0 || (is_salary && (!salary_user_id || !salary_month_year))"
             class="px-6 py-2 text-sm font-semibold bg-accent text-accent-foreground rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
             <span v-if="submitting" class="inline-flex items-center gap-2">
               <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
               </svg>
               Creating...
             </span>
@@ -113,19 +152,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { ExpenseCategory } from '@/types/expense'
+import { ref, computed } from 'vue'
 import { useExpensesStore } from '@/stores/expenses'
+import { useUsersStore } from '@/stores/users'
 import { uploadImage } from '@/utils/image'
 import { push } from 'notivue'
 
 const emit = defineEmits<{ 'expense-created': [] }>()
 
 const expensesStore = useExpensesStore()
+const usersStore = useUsersStore()
 
 const submitting = ref(false)
+const is_salary = ref(false)
+const salary_user_id = ref<number | null>(null)
+const salary_month_year = ref('')
 const title = ref('')
-const category = ref<ExpenseCategory>('other')
+const category = ref('')
 const amount = ref<number | null>(null)
 const expense_date = ref(new Date().toISOString().split('T')[0] as string)
 const notes = ref('')
@@ -134,42 +177,54 @@ const notes = ref('')
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const uploading = ref(false)
-const uploadProgress = ref(0)
-const uploadError = ref<string | null>(null)
+
+// Get staff users for salary dropdown
+const staffUsers = computed(() => {
+  return usersStore.users.filter(u => u.role !== 'admin' && u.is_active)
+})
+
+const selectedUser = computed(() => {
+  return staffUsers.value.find(u => u.id === salary_user_id.value)
+})
+
+// Category suggestions from existing expenses
+const categorySuggestions = computed(() => {
+  const cats = new Set<string>()
+  expensesStore.expenses.forEach(e => {
+    if (e.category) cats.add(e.category)
+  })
+  return Array.from(cats)
+})
 
 const handleFileSelect = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
   if (!file.type.startsWith('image/')) {
-    uploadError.value = 'Please select an image file'
+    push.error('Please select an image file')
     return
   }
   if (file.size > 5 * 1024 * 1024) {
-    uploadError.value = 'Image size should be less than 5MB'
+    push.error('Image size should be less than 5MB')
     return
   }
-  uploadError.value = null
   imageFile.value = file
   const reader = new FileReader()
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string
-  }
+  reader.onload = (e) => { imagePreview.value = e.target?.result as string }
   reader.readAsDataURL(file)
 }
 
 const removeImage = () => {
   imageFile.value = null
   imagePreview.value = null
-  uploadError.value = null
-  uploadProgress.value = 0
-  const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-  if (fileInput) fileInput.value = ''
 }
 
 const resetForm = () => {
+  is_salary.value = false
+  salary_user_id.value = null
+  salary_month_year.value = ''
   title.value = ''
-  category.value = 'other'
+  category.value = ''
   amount.value = null
   expense_date.value = new Date().toISOString().split('T')[0] as string
   notes.value = ''
@@ -178,14 +233,20 @@ const resetForm = () => {
 
 const submit = async () => {
   if (!title.value || !amount.value || amount.value <= 0 || !expense_date.value) return
+  if (is_salary.value && (!salary_user_id.value || !salary_month_year.value)) {
+    push.error('Employee and month are required for salary')
+    return
+  }
 
   submitting.value = true
 
   try {
-    // Step 1: Create expense WITHOUT image
     const newExpense = await expensesStore.createExpense({
+      is_salary: is_salary.value,
+      salary_user_id: salary_user_id.value,
+      salary_month_year: salary_month_year.value || null,
       title: title.value,
-      category: category.value,
+      category: category.value || null,
       amount: Number(amount.value),
       expense_date: expense_date.value,
       notes: notes.value || null,
@@ -196,17 +257,11 @@ const submit = async () => {
       return
     }
 
-    // Step 2: Upload image for the NEWLY CREATED expense
+    // Upload image if selected
     if (imageFile.value) {
       uploading.value = true
-      uploadProgress.value = 0
-
-      const imageUrl = await uploadImage('expenses', newExpense.id, imageFile.value, (progress: number) => {
-        uploadProgress.value = progress
-      })
-
+      const imageUrl = await uploadImage('expenses', newExpense.id, imageFile.value)
       uploading.value = false
-
       if (!imageUrl) {
         push.warning('Expense created but image upload failed')
       }
@@ -215,8 +270,8 @@ const submit = async () => {
     push.success('Expense added successfully!')
     resetForm()
     emit('expense-created')
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
-    console.error('Error creating expense:', error)
     push.error('Failed to create expense')
   } finally {
     submitting.value = false

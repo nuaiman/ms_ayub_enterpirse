@@ -5,6 +5,7 @@ import (
 	"backend/internal/models"
 	"backend/internal/utils"
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -368,101 +369,153 @@ func (h *Handler) UpdateUserProfileHandler(w http.ResponseWriter, r *http.Reques
 
 func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	type request struct {
-		Name     string  `json:"name"`
-		Username string  `json:"username"`
-		Password string  `json:"password"`
-		Role     string  `json:"role"`
-		Email    *string `json:"email"`
-		Phone    *string `json:"phone"`
-		Address  *string `json:"address"`
-		IDType   *string `json:"id_type"`
-		IDNumber *string `json:"id_number"`
-		ImageURL *string `json:"image_url"`
+		Name          string  `json:"name"`
+		Username      string  `json:"username"`
+		Password      string  `json:"password"`
+		Role          string  `json:"role"`
+		Email         *string `json:"email"`
+		Phone         *string `json:"phone"`
+		Address       *string `json:"address"`
+		IDType        *string `json:"id_type"`
+		IDNumber      *string `json:"id_number"`
+		ImageURL      *string `json:"image_url"`
+		MonthlySalary float64 `json:"monthly_salary"`
 	}
 
 	var req request
 
 	if err := utils.ReadJson(w, r, &req); err != nil {
+		log.Printf("❌ Failed to parse request body: %v", err)
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Name == "" || req.Username == "" || req.Password == "" || req.Role == "" {
-		utils.ErrorJson(w, http.StatusBadRequest, "missing required fields")
+	// DEBUG: Log the received request
+	log.Printf("📝 CreateUser request received:")
+	log.Printf("   Name: %s", req.Name)
+	log.Printf("   Username: %s", req.Username)
+	log.Printf("   Role: %s", req.Role)
+	log.Printf("   Email: %v", req.Email)
+	log.Printf("   Phone: %v", req.Phone)
+	log.Printf("   Address: %v", req.Address)
+	log.Printf("   IDType: %v", req.IDType)
+	log.Printf("   IDNumber: %v", req.IDNumber)
+	log.Printf("   MonthlySalary: %f", req.MonthlySalary)
+
+	// Validate required fields
+	if req.Name == "" {
+		log.Printf("❌ Validation failed: name is required")
+		utils.ErrorJson(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.Username == "" {
+		log.Printf("❌ Validation failed: username is required")
+		utils.ErrorJson(w, http.StatusBadRequest, "username is required")
+		return
+	}
+	if req.Password == "" {
+		log.Printf("❌ Validation failed: password is required")
+		utils.ErrorJson(w, http.StatusBadRequest, "password is required")
+		return
+	}
+	if req.Role == "" {
+		log.Printf("❌ Validation failed: role is required")
+		utils.ErrorJson(w, http.StatusBadRequest, "role is required")
 		return
 	}
 
+	// Validate role
 	switch req.Role {
 	case "manager", "staff", "accounts":
+		log.Printf("✅ Role '%s' is valid", req.Role)
 	default:
+		log.Printf("❌ Validation failed: invalid role '%s'", req.Role)
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid role")
 		return
 	}
 
+	// Validate ID type if provided
 	if req.IDType != nil && *req.IDType != "" {
 		validTypes := map[string]bool{
 			"nid": true, "passport": true, "driving_license": true,
 			"birth_certificate": true, "trade_license": true, "other": true,
 		}
 		if !validTypes[*req.IDType] {
+			log.Printf("❌ Validation failed: invalid id_type '%s'", *req.IDType)
 			utils.ErrorJson(w, http.StatusBadRequest, "invalid id_type")
 			return
 		}
 	}
 
+	// Validate email if provided
 	if req.Email != nil && *req.Email != "" {
 		if !strings.Contains(*req.Email, "@") {
+			log.Printf("❌ Validation failed: invalid email format '%s'", *req.Email)
 			utils.ErrorJson(w, http.StatusBadRequest, "invalid email format")
 			return
 		}
 
 		existingUser, err := h.app.Models.User.GetByEmail(r.Context(), *req.Email)
 		if err == nil && existingUser != nil {
+			log.Printf("❌ Validation failed: email already in use '%s'", *req.Email)
 			utils.ErrorJson(w, http.StatusConflict, "email already in use")
 			return
 		}
 	}
 
+	// Validate password strength
 	if err := utils.ValidatePassword(req.Password); err != nil {
+		log.Printf("❌ Validation failed: password validation error: %v", err)
 		utils.ErrorJson(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
+	// Check if username already exists
 	existing, err := h.app.Models.User.GetByUsername(r.Context(), req.Username)
 	if err != nil {
+		log.Printf("❌ Database error checking username: %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to check username")
 		return
 	}
 
 	if existing != nil {
+		log.Printf("❌ Validation failed: username already exists '%s'", req.Username)
 		utils.ErrorJson(w, http.StatusConflict, "username already exists")
 		return
 	}
 
+	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
+		log.Printf("❌ Failed to hash password: %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to hash password")
 		return
 	}
 
+	// Create user object
 	user := models.User{
-		Name:     req.Name,
-		Username: req.Username,
-		Password: hashedPassword,
-		Role:     req.Role,
-		Email:    req.Email,
-		Phone:    req.Phone,
-		Address:  req.Address,
-		IDType:   req.IDType,
-		IDNumber: req.IDNumber,
-		ImageURL: req.ImageURL,
+		Name:          req.Name,
+		Username:      req.Username,
+		Password:      hashedPassword,
+		Role:          req.Role,
+		Email:         req.Email,
+		Phone:         req.Phone,
+		Address:       req.Address,
+		IDType:        req.IDType,
+		IDNumber:      req.IDNumber,
+		ImageURL:      req.ImageURL,
+		MonthlySalary: req.MonthlySalary,
 	}
 
+	log.Printf("📝 Attempting to insert user into database...")
 	id, err := h.app.Models.User.Insert(r.Context(), &user)
 	if err != nil {
+		log.Printf("❌ Failed to insert user: %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to create user")
 		return
 	}
+
+	log.Printf("✅ User created successfully with ID: %d", id)
 
 	user.ID = id
 	user.Password = ""
@@ -480,6 +533,8 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		IPAddress:   &ip,
 		UserAgent:   &ua,
 	})
+
+	log.Printf("📝 Audit log created for user creation")
 
 	utils.SuccessJson(w, http.StatusCreated, "user created successfully", user)
 }
@@ -751,4 +806,64 @@ func (h *Handler) ToggleUserActiveHandler(w http.ResponseWriter, r *http.Request
 	utils.SuccessJson(w, http.StatusOK, "user status updated successfully", map[string]any{
 		"user": user,
 	})
+}
+
+func (h *Handler) UpdateUserSalaryHandler(w http.ResponseWriter, r *http.Request) {
+	type request struct {
+		MonthlySalary float64 `json:"monthly_salary"`
+	}
+
+	var req request
+
+	if err := utils.ReadJson(w, r, &req); err != nil {
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.MonthlySalary < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "monthly_salary cannot be negative")
+		return
+	}
+
+	userID, ok := utils.GetParamID(w, r)
+	if !ok {
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	user, err := h.app.Models.User.GetByID(r.Context(), userID)
+	if err != nil {
+		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch user")
+		return
+	}
+
+	if user == nil {
+		utils.ErrorJson(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	err = h.app.Models.User.UpdateMonthlySalary(r.Context(), userID, req.MonthlySalary)
+	if err != nil {
+		utils.ErrorJson(w, http.StatusInternalServerError, "failed to update salary")
+		return
+	}
+
+	// Audit log
+	currentUserID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
+	ip := r.RemoteAddr
+	ua := r.UserAgent()
+	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
+		UserID:      currentUserID,
+		Action:      "update",
+		Description: "Updated salary for user #" + strconv.FormatInt(userID, 10) + " to " + strconv.FormatFloat(req.MonthlySalary, 'f', 2, 64),
+		EntityType:  "users",
+		EntityID:    userID,
+		IPAddress:   &ip,
+		UserAgent:   &ua,
+	})
+
+	user.MonthlySalary = req.MonthlySalary
+	user.Password = ""
+
+	utils.SuccessJson(w, http.StatusOK, "salary updated successfully", user)
 }

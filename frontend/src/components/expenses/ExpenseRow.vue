@@ -1,48 +1,49 @@
 <template>
   <div
-    class="grid grid-cols-12 items-center py-3.5 px-3 border-b border-default transition-all duration-200 relative text-sm group hover:border-b-accent/50 hover:shadow-[0_1px_0_0_rgba(232,33,39,0.3)] cursor-pointer"
-    @click="emit('view-expense', expense)">
-
+    class="grid grid-cols-12 items-center py-3.5 px-3 border-b border-default transition-all duration-200 relative text-sm group hover:border-b-accent/50 hover:shadow-[0_1px_0_0_rgba(232,33,39,0.3)]">
+    <!-- Expense Title -->
     <div class="col-span-3">
-      <div class="flex items-center gap-3">
-        <div class="shrink-0">
-          <div :class="getCategoryIconBg(expense.category)" class="w-9 h-9 rounded-lg flex items-center justify-center">
-            <svg class="w-4 h-4" :class="getCategoryIconColor(expense.category)" fill="none" stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path v-if="expense.category === 'rent'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
-              <path v-else-if="expense.category === 'salary'" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              <path v-else-if="expense.category === 'bill'" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-          </div>
-        </div>
+      <div class="flex items-center gap-2">
         <div class="min-w-0">
           <div class="font-medium text-primary truncate">{{ expense.title }}</div>
-          <div class="text-xs text-muted capitalize">{{ expense.category }}</div>
+          <div class="text-[10px] text-muted">#{{ expense.id }}</div>
         </div>
       </div>
     </div>
 
+    <!-- Type (Salary/Regular) -->
+    <div class="col-span-1">
+      <span v-if="expense.is_salary"
+        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+        Salary
+      </span>
+      <span v-else class="text-xs text-muted">Regular</span>
+    </div>
+
+    <!-- Amount -->
     <div class="col-span-2">
       <span class="text-sm font-semibold text-warning-text">৳{{ expense.amount.toFixed(2) }}</span>
     </div>
 
-    <div class="col-span-3">
+    <!-- Date -->
+    <div class="col-span-2">
       <span class="text-xs text-secondary">{{ formatDate(expense.expense_date) }}</span>
     </div>
 
+    <!-- Category -->
     <div class="col-span-2">
-      <span v-if="expense.notes" class="text-xs text-muted truncate block max-w-45">{{ expense.notes }}</span>
+      <span v-if="expense.category" class="text-xs text-secondary">{{ expense.category }}</span>
       <span v-else class="text-xs text-muted">—</span>
     </div>
 
-    <div class="col-span-2 flex justify-end pr-0.5 relative" @click.stop>
+    <!-- Notes -->
+    <div class="col-span-1">
+      <span v-if="expense.notes" class="text-xs text-muted truncate block max-w-32">{{ expense.notes }}</span>
+      <span v-else class="text-xs text-muted">—</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-span-1 flex justify-end pr-0.5 relative" @click.stop>
       <button @click="open = !open"
         class="w-7 h-7 flex items-center justify-center border border-default rounded-md hover:bg-surface-alt transition-all duration-200 opacity-0 group-hover:opacity-100"
         :class="{ 'opacity-100': open }">
@@ -62,6 +63,7 @@
           <div class="px-3 py-1.5 border-b border-divider">
             <p class="text-[11px] font-semibold text-muted uppercase">Actions</p>
           </div>
+
           <button @click="openEditDialog"
             class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-secondary hover:bg-surface-alt transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,6 +72,7 @@
             </svg>
             Edit
           </button>
+
           <div class="border-t border-divider my-0.5"></div>
           <button @click="openDeleteConfirm"
             class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-warning-text hover:bg-surface-alt transition-colors">
@@ -108,13 +111,8 @@
           </div>
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Category</label>
-            <select v-model="editForm.category"
-              class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
-              <option value="rent" class="bg-surface text-primary">Rent</option>
-              <option value="salary" class="bg-surface text-primary">Salary</option>
-              <option value="bill" class="bg-surface text-primary">Bill</option>
-              <option value="other" class="bg-surface text-primary">Other</option>
-            </select>
+            <input v-model="editForm.category" type="text"
+              class="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
           </div>
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Amount</label>
@@ -211,14 +209,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { Expense, ExpenseCategory } from '@/types/expense'
+import type { Expense } from '@/types/expense'
 import { useExpensesStore } from '@/stores/expenses'
 import { uploadImage, deleteImage, getImageUrl } from '@/utils/image'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 import { push } from 'notivue'
 
 const props = defineProps<{ expense: Expense }>()
-const emit = defineEmits<{ 'expense-updated': []; 'view-expense': [expense: Expense] }>()
+const emit = defineEmits<{ 'expense-updated': [] }>()
 
 const expensesStore = useExpensesStore()
 const open = ref(false)
@@ -231,7 +229,7 @@ const editImagePreview = ref<string | null>(null)
 
 const editForm = ref({
   title: props.expense.title,
-  category: props.expense.category,
+  category: props.expense.category || '',
   amount: props.expense.amount,
   expense_date: props.expense.expense_date,
   notes: props.expense.notes || '',
@@ -240,7 +238,7 @@ const editForm = ref({
 const openEditDialog = () => {
   editForm.value = {
     title: props.expense.title,
-    category: props.expense.category,
+    category: props.expense.category || '',
     amount: props.expense.amount,
     expense_date: props.expense.expense_date,
     notes: props.expense.notes || '',
@@ -280,21 +278,19 @@ const removeExistingImage = async () => {
 
 const submitEdit = async () => {
   try {
-    // Upload new image first if selected
     if (editImageFile.value) {
       await uploadImage('expenses', props.expense.id, editImageFile.value)
     }
 
     const success = await expensesStore.updateExpense(props.expense.id, {
       title: editForm.value.title,
-      category: editForm.value.category as ExpenseCategory,
+      category: editForm.value.category || null,
       amount: editForm.value.amount,
       expense_date: editForm.value.expense_date,
       notes: editForm.value.notes || null,
     })
     if (success) {
       showEditDialog.value = false
-      // Refresh the store to get updated image_url
       await expensesStore.fetchExpenses()
       emit('expense-updated')
     }
@@ -309,11 +305,4 @@ const deleteExpense = async () => {
 }
 
 const formatDate = (d: string): string => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-
-const getCategoryIconBg = (cat: string): string => {
-  switch (cat) { case 'rent': return 'bg-info-bg'; case 'salary': return 'bg-success-bg'; case 'bill': return 'bg-warning-bg'; default: return 'bg-surface-alt'; }
-}
-const getCategoryIconColor = (cat: string): string => {
-  switch (cat) { case 'rent': return 'text-info-text'; case 'salary': return 'text-success-text'; case 'bill': return 'text-warning-text'; default: return 'text-muted'; }
-}
 </script>

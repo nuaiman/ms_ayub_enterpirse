@@ -72,18 +72,10 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Patch("/{id}/change-password", higherManagementOnly(handler.ChangeUserPasswordHandler))
 			r.Patch("/{id}/change-role", higherManagementOnly(handler.ChangeUserRoleHandler))
 			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleUserActiveHandler))
+			r.Patch("/{id}/salary", higherManagementOnly(handler.UpdateUserSalaryHandler))
 		})
 
-		// CUSTOMERS
-		r.Route("/customers", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllCustomersHandler))
-			r.Post("/", higherManagementOnly(handler.CreateCustomerHandler))
-			r.Get("/{id}", protected(handler.GetCustomerHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerHandler))
-		})
-
-		// ITEMS (Unified with optional contracts)
+		// ITEMS
 		r.Route("/items", func(r chi.Router) {
 			r.Get("/", protected(handler.GetAllItemsHandler))
 			r.Post("/", protected(handler.CreateItemHandler))
@@ -93,14 +85,14 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteItemHandler))
 		})
 
-		// SHIPMENTS
-		r.Route("/shipments", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllShipmentsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateShipmentHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetShipmentHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateShipmentHandler))
-			r.Patch("/{id}/status", higherManagementOnly(handler.ChangeShipmentStatusHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteShipmentHandler))
+		// CHECKOUTS
+		r.Route("/checkouts", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllCheckoutsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateCheckoutHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetCheckoutHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateCheckoutHandler))
+			r.Patch("/{id}/status", higherManagementOnly(handler.ChangeCheckoutStatusHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteCheckoutHandler))
 		})
 
 		// EXPENSES

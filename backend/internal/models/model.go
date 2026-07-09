@@ -6,10 +6,8 @@ import (
 
 type Models struct {
 	User     UserModel
-	Customer CustomerModel
-	Contract ContractModel
 	Item     ItemModel
-	Shipment ShipmentModel
+	Checkout CheckoutModel
 	Expense  ExpenseModel
 	Log      LogModel
 }
@@ -17,10 +15,8 @@ type Models struct {
 func NewModel(db *sql.DB) Models {
 	return Models{
 		User:     UserModel{DB: db},
-		Customer: CustomerModel{DB: db},
-		Contract: ContractModel{DB: db},
 		Item:     ItemModel{DB: db},
-		Shipment: ShipmentModel{DB: db},
+		Checkout: CheckoutModel{DB: db},
 		Expense:  ExpenseModel{DB: db},
 		Log:      LogModel{DB: db},
 	}

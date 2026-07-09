@@ -12,7 +12,7 @@ import (
 )
 
 // =======================================
-// UPLOAD IMAGE (USERS / ITEMS / EXPENSES)
+// UPLOAD IMAGE (USERS / ITEMS / EXPENSES / CHECKOUTS)
 // POST /images/{type}/{id}
 // =======================================
 func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if item.UserID == nil || *item.UserID != userID {
+		if item.UserID != userID {
 			currentUser, err := h.app.Models.User.GetByID(r.Context(), userID)
 			if err != nil || currentUser == nil {
 				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
@@ -110,7 +110,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if expense.UserID == nil || *expense.UserID != userID {
+		if expense.UserID != userID {
 			currentUser, err := h.app.Models.User.GetByID(r.Context(), userID)
 			if err != nil || currentUser == nil {
 				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
@@ -127,6 +127,31 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		basePath = filepath.Join("bucket", "expenses", strconv.FormatInt(id, 10))
+
+	case "checkouts":
+		checkout, err := h.app.Models.Checkout.GetByID(r.Context(), id)
+		if err != nil || checkout == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "checkout not found")
+			return
+		}
+
+		if checkout.UserID != userID {
+			currentUser, err := h.app.Models.User.GetByID(r.Context(), userID)
+			if err != nil || currentUser == nil {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+			if currentUser.Role != "admin" && currentUser.Role != "manager" && currentUser.Role != "accounts" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if checkout.ImageURL != nil && *checkout.ImageURL != "" {
+			oldImagePath = "." + *checkout.ImageURL
+		}
+
+		basePath = filepath.Join("bucket", "checkouts", strconv.FormatInt(id, 10))
 
 	default:
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid type")
@@ -164,6 +189,8 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		err = h.app.Models.Item.UpdateImage(r.Context(), id, &imageURL)
 	case "expenses":
 		err = h.app.Models.Expense.UpdateImage(r.Context(), id, &imageURL)
+	case "checkouts":
+		err = h.app.Models.Checkout.UpdateImage(r.Context(), id, &imageURL)
 	}
 
 	if err != nil {
@@ -184,7 +211,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // =======================================
-// DELETE IMAGE (USERS / ITEMS / EXPENSES)
+// DELETE IMAGE (USERS / ITEMS / EXPENSES / CHECKOUTS)
 // DELETE /images/{type}/{id}
 // =======================================
 func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +263,7 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if item.UserID == nil || *item.UserID != userID {
+		if item.UserID != userID {
 			currentUser, err := h.app.Models.User.GetByID(r.Context(), userID)
 			if err != nil || currentUser == nil {
 				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
@@ -259,7 +286,7 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if expense.UserID == nil || *expense.UserID != userID {
+		if expense.UserID != userID {
 			currentUser, err := h.app.Models.User.GetByID(r.Context(), userID)
 			if err != nil || currentUser == nil {
 				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
@@ -275,6 +302,29 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 			imageURL = *expense.ImageURL
 		}
 
+	case "checkouts":
+		checkout, err := h.app.Models.Checkout.GetByID(r.Context(), id)
+		if err != nil || checkout == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "checkout not found")
+			return
+		}
+
+		if checkout.UserID != userID {
+			currentUser, err := h.app.Models.User.GetByID(r.Context(), userID)
+			if err != nil || currentUser == nil {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+			if currentUser.Role != "admin" && currentUser.Role != "manager" && currentUser.Role != "accounts" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if checkout.ImageURL != nil {
+			imageURL = *checkout.ImageURL
+		}
+
 	default:
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid type")
 		return
@@ -285,8 +335,12 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = os.Remove("." + imageURL)
+	// Delete the physical file
+	if err := os.Remove("." + imageURL); err != nil {
+		println("Warning: Failed to delete image file:", imageURL, err.Error())
+	}
 
+	// Update database to remove image URL
 	switch entityType {
 	case "users":
 		err := h.app.Models.User.UpdateImage(r.Context(), id, nil)
@@ -302,6 +356,12 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case "expenses":
 		err := h.app.Models.Expense.UpdateImage(r.Context(), id, nil)
+		if err != nil {
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to update database")
+			return
+		}
+	case "checkouts":
+		err := h.app.Models.Checkout.UpdateImage(r.Context(), id, nil)
 		if err != nil {
 			utils.ErrorJson(w, http.StatusInternalServerError, "failed to update database")
 			return

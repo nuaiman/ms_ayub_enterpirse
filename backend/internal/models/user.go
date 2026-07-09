@@ -8,21 +8,22 @@ import (
 )
 
 type User struct {
-	ID           int64     `json:"id"`
-	Name         string    `json:"name"`
-	Username     string    `json:"username"`
-	Email        *string   `json:"email"`
-	Phone        *string   `json:"phone"`
-	Address      *string   `json:"address"`
-	IDType       *string   `json:"id_type"`
-	IDNumber     *string   `json:"id_number"`
-	ImageURL     *string   `json:"image_url"`
-	Password     string    `json:"-"`
-	Role         string    `json:"role"`
-	RefreshToken *string   `json:"-"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID            int64     `json:"id"`
+	Name          string    `json:"name"`
+	Username      string    `json:"username"`
+	Email         *string   `json:"email"`
+	Phone         *string   `json:"phone"`
+	Address       *string   `json:"address"`
+	IDType        *string   `json:"id_type"`
+	IDNumber      *string   `json:"id_number"`
+	ImageURL      *string   `json:"image_url"`
+	Password      string    `json:"-"`
+	Role          string    `json:"role"`
+	RefreshToken  *string   `json:"-"`
+	IsActive      bool      `json:"is_active"`
+	MonthlySalary float64   `json:"monthly_salary"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type UserModel struct {
@@ -41,9 +42,10 @@ func (m *UserModel) Insert(ctx context.Context, user *User) (int64, error) {
 			id_number,
 			image_url,
 			password,
-			role
+			role,
+			monthly_salary
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := m.DB.ExecContext(ctx, query,
@@ -57,6 +59,7 @@ func (m *UserModel) Insert(ctx context.Context, user *User) (int64, error) {
 		user.ImageURL,
 		user.Password,
 		user.Role,
+		user.MonthlySalary,
 	)
 	if err != nil {
 		return 0, err
@@ -73,7 +76,7 @@ func (m *UserModel) Insert(ctx context.Context, user *User) (int64, error) {
 func (m *UserModel) GetByID(ctx context.Context, id int64) (*User, error) {
 	query := `
 		SELECT id, name, username, email, phone, address, id_type, id_number, image_url, 
-		       password, role, refresh_token, is_active, created_at, updated_at
+		       password, role, refresh_token, is_active, monthly_salary, created_at, updated_at
 		FROM users
 		WHERE id = ?
 	`
@@ -96,6 +99,7 @@ func (m *UserModel) GetByID(ctx context.Context, id int64) (*User, error) {
 		&user.Role,
 		&user.RefreshToken,
 		&user.IsActive,
+		&user.MonthlySalary,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -113,7 +117,7 @@ func (m *UserModel) GetByID(ctx context.Context, id int64) (*User, error) {
 func (m *UserModel) GetByUsername(ctx context.Context, username string) (*User, error) {
 	query := `
 		SELECT id, name, username, email, phone, address, id_type, id_number, image_url,
-		       password, role, refresh_token, is_active, created_at, updated_at
+		       password, role, refresh_token, is_active, monthly_salary, created_at, updated_at
 		FROM users
 		WHERE username = ?
 	`
@@ -136,6 +140,7 @@ func (m *UserModel) GetByUsername(ctx context.Context, username string) (*User, 
 		&user.Role,
 		&user.RefreshToken,
 		&user.IsActive,
+		&user.MonthlySalary,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -153,7 +158,7 @@ func (m *UserModel) GetByUsername(ctx context.Context, username string) (*User, 
 func (m *UserModel) GetByRefreshToken(ctx context.Context, token string) (*User, error) {
 	query := `
 		SELECT id, name, username, email, phone, address, id_type, id_number, image_url,
-		       password, role, refresh_token, is_active, created_at, updated_at
+		       password, role, refresh_token, is_active, monthly_salary, created_at, updated_at
 		FROM users
 		WHERE refresh_token = ?
 	`
@@ -176,6 +181,7 @@ func (m *UserModel) GetByRefreshToken(ctx context.Context, token string) (*User,
 		&user.Role,
 		&user.RefreshToken,
 		&user.IsActive,
+		&user.MonthlySalary,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -193,7 +199,7 @@ func (m *UserModel) GetByRefreshToken(ctx context.Context, token string) (*User,
 func (m *UserModel) GetByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
 		SELECT id, name, username, email, phone, address, id_type, id_number, image_url,
-		       password, role, refresh_token, is_active, created_at, updated_at
+		       password, role, refresh_token, is_active, monthly_salary, created_at, updated_at
 		FROM users
 		WHERE email = ?
 	`
@@ -216,6 +222,7 @@ func (m *UserModel) GetByEmail(ctx context.Context, email string) (*User, error)
 		&user.Role,
 		&user.RefreshToken,
 		&user.IsActive,
+		&user.MonthlySalary,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -233,7 +240,7 @@ func (m *UserModel) GetByEmail(ctx context.Context, email string) (*User, error)
 func (m *UserModel) GetAll(ctx context.Context) ([]User, error) {
 	query := `
 		SELECT id, name, username, email, phone, address, id_type, id_number, image_url,
-		       password, role, refresh_token, is_active, created_at, updated_at
+		       password, role, refresh_token, is_active, monthly_salary, created_at, updated_at
 		FROM users
 		ORDER BY id DESC
 	`
@@ -263,6 +270,7 @@ func (m *UserModel) GetAll(ctx context.Context) ([]User, error) {
 			&u.Role,
 			&u.RefreshToken,
 			&u.IsActive,
+			&u.MonthlySalary,
 			&u.CreatedAt,
 			&u.UpdatedAt,
 		)
@@ -306,7 +314,7 @@ func (m *UserModel) UpdateProfile(ctx context.Context, userID int64, user *User)
 	query := `
 		UPDATE users
 		SET name = ?, email = ?, phone = ?, address = ?, 
-		    id_type = ?, id_number = ?, updated_at = CURRENT_TIMESTAMP
+		    id_type = ?, id_number = ?, monthly_salary = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
 
@@ -317,13 +325,12 @@ func (m *UserModel) UpdateProfile(ctx context.Context, userID int64, user *User)
 		user.Address,
 		user.IDType,
 		user.IDNumber,
+		user.MonthlySalary,
 		userID,
 	)
 	return err
 }
 
-// UpdateImage updates only the image_url for a user
-// Pass nil to remove the image, or a string pointer to set a new URL
 func (m *UserModel) UpdateImage(ctx context.Context, userID int64, imageURL *string) error {
 	query := `
 		UPDATE users
@@ -332,6 +339,17 @@ func (m *UserModel) UpdateImage(ctx context.Context, userID int64, imageURL *str
 	`
 
 	_, err := m.DB.ExecContext(ctx, query, imageURL, userID)
+	return err
+}
+
+func (m *UserModel) UpdateMonthlySalary(ctx context.Context, userID int64, salary float64) error {
+	query := `
+		UPDATE users
+		SET monthly_salary = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
+	_, err := m.DB.ExecContext(ctx, query, salary, userID)
 	return err
 }
 

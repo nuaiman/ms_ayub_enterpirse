@@ -24,16 +24,12 @@
         <!-- CONTENT -->
         <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
 
-          <section v-if="activeTab === 'customers'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
-            <CustomerList />
-          </section>
-
-          <section v-else-if="activeTab === 'items'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
+          <section v-if="activeTab === 'items'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
             <ItemList />
           </section>
 
-          <section v-else-if="activeTab === 'shipments'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
-            <ShipmentList />
+          <section v-else-if="activeTab === 'checkouts'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
+            <CheckoutList />
           </section>
 
           <section v-else-if="activeTab === 'users'" class="flex-1 min-h-0 flex flex-col overflow-hidden p-6">
@@ -80,24 +76,22 @@ import AppSettings from '@/components/AppSettings.vue'
 import AppTabs from '@/components/ui/AppTabs.vue'
 
 import UserList from '@/components/users/UserList.vue'
-import CustomerList from '@/components/customers/CustomerList.vue'
 import ItemList from '@/components/items/ItemList.vue'
-import ShipmentList from '@/components/shipments/ShipmentList.vue'
+import CheckoutList from '@/components/checkouts/CheckoutList.vue'
 import ExpenseList from '@/components/expenses/ExpenseList.vue'
 import LogList from '@/components/logs/LogList.vue'
 
 const auth = useAuthStore()
 
-const activeTab = ref('customers')
+const activeTab = ref('items')
 
 const formattedActiveTab = computed(() =>
   activeTab.value.charAt(0).toUpperCase() + activeTab.value.slice(1)
 )
 
 const allTabs = [
-  { key: 'customers', label: 'Customers', roles: ['admin', 'manager'] },
   { key: 'items', label: 'Items', roles: ['admin', 'manager', 'staff'] },
-  { key: 'shipments', label: 'Shipments', roles: ['admin', 'manager'] },
+  { key: 'checkouts', label: 'Checkouts', roles: ['admin', 'manager'] },
   { key: 'divider1', label: '', divider: true, roles: ['admin', 'manager'] },
   { key: 'expenses', label: 'Expenses', roles: ['admin', 'manager', 'accounts'] },
   { key: 'users', label: 'Users', roles: ['admin', 'manager'] },
