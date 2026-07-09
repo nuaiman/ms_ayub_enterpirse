@@ -1,0 +1,219 @@
+@import 'tailwindcss';
+
+/* =========================================================
+   THEME - Tesla Inspired
+   ========================================================= */
+
+:root {
+  /* Backgrounds */
+  --bg: #f5f5f0;
+  --surface: #ffffff;
+  --surface-alt: #fafaf8;
+
+  /* Borders */
+  --border: #e8e8e1;
+  --divider: #f0f0ea;
+
+  /* Text */
+  --text-primary: #171717;
+  --text-secondary: #737373;
+  --text-muted: #a3a3a3;
+
+  /* Controls */
+  --input-bg: #fafaf8;
+  --button-bg: #ffffff;
+
+  /* Brand */
+  --accent: #e82127;
+  --accent-foreground: #ffffff;
+
+  /* Status */
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --success-text: #16a34a;
+
+  --warning-bg: #fefce8;
+  --warning-border: #fef08a;
+  --warning-text: #ca8a04;
+
+  --info-bg: #f0f9ff;
+  --info-border: #bae6fd;
+  --info-text: #0284c7;
+}
+
+[data-theme='dark'] {
+  /* Backgrounds */
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-alt: #1c1c1c;
+
+  /* Borders */
+  --border: #262626;
+  --divider: #1c1c1c;
+
+  /* Text */
+  --text-primary: #fafafa;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+
+  /* Controls */
+  --input-bg: #1c1c1c;
+  --button-bg: #141414;
+
+  /* Brand */
+  --accent: #e82127;
+  --accent-foreground: #ffffff;
+
+  /* Status */
+  --success-bg: #052e16;
+  --success-border: #166534;
+  --success-text: #4ade80;
+
+  --warning-bg: #422006;
+  --warning-border: #854d0e;
+  --warning-text: #facc15;
+
+  --info-bg: #172554;
+  --info-border: #1e40af;
+  --info-text: #60a5fa;
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+
+@layer utilities {
+  /* Backgrounds */
+
+  .bg-app {
+    background-color: var(--bg);
+  }
+
+  .bg-surface {
+    background-color: var(--surface);
+  }
+
+  .bg-surface-alt {
+    background-color: var(--surface-alt);
+  }
+
+  .bg-input {
+    background-color: var(--input-bg);
+  }
+
+  .bg-button {
+    background-color: var(--button-bg);
+  }
+
+  .bg-accent {
+    background-color: var(--accent);
+  }
+
+  /* Text */
+
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .text-accent {
+    color: var(--accent);
+  }
+
+  .text-accent-foreground {
+    color: var(--accent-foreground);
+  }
+
+  /* Borders */
+
+  .border-default {
+    border-color: var(--border);
+  }
+
+  .border-divider {
+    border-color: var(--divider);
+  }
+
+  /* Components */
+
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .input {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+
+  .input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .button {
+    background-color: var(--button-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  /* Hover */
+
+  .hover-surface:hover {
+    background-color: var(--surface-alt);
+  }
+
+  /* Status */
+
+  .status-success {
+    background-color: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success-text);
+  }
+
+  .status-warning {
+    background-color: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    color: var(--warning-text);
+  }
+
+  .status-info {
+    background-color: var(--info-bg);
+    border: 1px solid var(--info-border);
+    color: var(--info-text);
+  }
+}

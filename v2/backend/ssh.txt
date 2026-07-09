@@ -1,0 +1,163 @@
+## **Step 1: Open PowerShell on Your Windows PC**
+
+Press `Windows Key`, type **PowerShell**, and open it.
+
+---
+
+## **Step 2: SSH into Your VPS**
+
+Type this command and press Enter:
+
+```powershell
+ssh root@163.227.239.217
+```
+
+When asked for password, type (you won't see the characters):
+```
+J5cWT);9ykPj03
+```
+
+Press Enter. You should see:
+```
+[root@4gb-vm ~]#
+```
+
+---
+
+## **Step 3: Run the Setup Command**
+
+**Copy this entire block and paste it into the SSH terminal, then press Enter:**
+
+```bash
+systemctl stop msae-backend 2>/dev/null; systemctl disable msae-backend 2>/dev/null; rm -rf /root/ms_ayub_enterpirse /usr/local/go /etc/systemd/system/msae-backend.service; systemctl daemon-reload; echo "✅ Old files cleaned"
+```
+
+Wait for it to finish. You'll see `✅ Old files cleaned`.
+
+---
+
+## **Step 4: Install Go**
+
+Copy and paste this command:
+
+```bash
+cd /tmp && wget -q https://go.dev/dl/go1.26.4.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz && echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc && echo "✅ Go installed: $(go version)"
+```
+
+Wait 1-2 minutes. You should see: `✅ Go installed: go version go1.26.4 linux/amd64`
+
+---
+
+## **Step 5: Clone Your Repository**
+
+```bash
+cd /root && git clone https://github.com/nuaiman/ms_ayub_enterpirse.git && echo "✅ Repository cloned"
+```
+
+You should see: `✅ Repository cloned`
+
+---
+
+## **Step 6: Upload Your Config File**
+
+**Open a NEW PowerShell window** (keep the SSH window open).
+
+Type this command:
+
+```powershell
+scp C:\Users\ashiq\Documents\Clients\MS Ayub Enterprise\backend\config\config.env root@163.227.239.217:/root/ms_ayub_enterpirse/backend/config/
+```
+
+Enter password: `J5cWT);9ykPj03`
+
+You should see something like: `config.env 100% ...`
+
+---
+
+## **Step 7: Build Your Application**
+
+Go back to your **SSH window** and run:
+
+```bash
+cd /root/ms_ayub_enterpirse/backend && go mod download && go build -o msae-backend ./cmd/main.go && echo "✅ Build complete"
+```
+
+Wait 1-2 minutes. You should see: `✅ Build complete`
+
+---
+
+## **Step 8: Create System Service**
+
+Copy and paste this command:
+
+```bash
+cat > /etc/systemd/system/msae-backend.service << 'EOF'
+[Unit]
+Description=MS Ayub Enterprise Backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ms_ayub_enterpirse/backend
+ExecStart=/root/ms_ayub_enterpirse/backend/msae-backend
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+echo "✅ Service file created"
+```
+
+---
+
+## **Step 9: Start the Service**
+
+```bash
+systemctl daemon-reload && systemctl start msae-backend && systemctl enable msae-backend && echo "✅ Service started"
+```
+
+---
+
+## **Step 10: Open Firewall**
+
+```bash
+systemctl stop firewalld 2>/dev/null; systemctl disable firewalld 2>/dev/null; echo "✅ Firewall disabled"
+```
+
+---
+
+## **Step 11: Verify Everything**
+
+```bash
+echo "=== Service Status ===" && systemctl status msae-backend --no-pager && echo "" && echo "=== Testing App ===" && curl -s http://localhost:8080/api/health
+```
+
+You should see the service is `active (running)` and a JSON response from your health endpoint.
+
+---
+
+## **Step 12: Access Your Application**
+
+Open your browser and go to:
+
+```
+http://163.227.239.217:8080
+```
+
+---
+
+## **Useful Commands for Later**
+
+| Action | Command |
+|--------|---------|
+| Check service status | `systemctl status msae-backend` |
+| Restart service | `systemctl restart msae-backend` |
+| Stop service | `systemctl stop msae-backend` |
+| View logs | `journalctl -u msae-backend -f` |
+| View recent logs | `journalctl -u msae-backend -n 50 --no-pager` |
+
+---
