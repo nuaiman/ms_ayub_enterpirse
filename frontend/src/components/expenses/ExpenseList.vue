@@ -79,15 +79,14 @@
     </div>
 
     <div class="flex-1 min-h-0 overflow-auto">
-      <div class="min-w-[768px]">
+      <div class="min-w-3xl">
         <div
           class="grid grid-cols-12 items-center py-3 px-3 border-b border-divider text-xs font-semibold text-muted uppercase tracking-wider shrink-0 bg-surface-alt rounded-t-lg">
-          <div class="col-span-3">Expense</div>
-          <div class="col-span-1">Type</div>
+          <div class="col-span-3">Category</div>
           <div class="col-span-2">Amount</div>
           <div class="col-span-2">Date</div>
-          <div class="col-span-2">Category</div>
-          <div class="col-span-1">Notes</div>
+          <div class="col-span-2">Type</div>
+          <div class="col-span-2">Notes</div>
           <div class="col-span-1 text-right">Actions</div>
         </div>
 

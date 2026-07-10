@@ -46,24 +46,28 @@
 
         <!-- Expense Details -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Title -->
-          <div class="space-y-1.5 md:col-span-2">
-            <label class="text-sm font-medium text-primary">Title <span class="text-warning-text">*</span></label>
-            <input v-model="title" type="text"
-              :placeholder="is_salary ? 'e.g. March 2024 Salary - John' : 'Expense title'" required
-              class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
-          </div>
-
-          <!-- Category -->
-          <div class="space-y-1.5">
+          <!-- Category with autocomplete -->
+          <div class="space-y-1.5 relative">
             <label class="text-sm font-medium text-primary">Category</label>
             <div class="relative">
               <input v-model="category" type="text" placeholder="e.g. office supplies, utilities..."
-                list="category-list"
+                @focus="showCategoryDropdown = true" @input="showCategoryDropdown = true"
                 class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
-              <datalist id="category-list">
-                <option v-for="cat in categorySuggestions" :key="cat" :value="cat" />
-              </datalist>
+              <button v-if="category" @click="category = ''" type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div v-if="showCategoryDropdown && filteredCategorySuggestions.length > 0"
+              class="absolute z-50 left-0 right-0 mt-1 border border-default rounded-xl shadow-lg overflow-hidden bg-surface">
+              <div class="max-h-48 overflow-y-auto">
+                <button v-for="cat in filteredCategorySuggestions" :key="cat" @click="selectCategory(cat)" type="button"
+                  class="w-full flex items-center px-4 py-2.5 text-sm text-secondary hover:bg-surface-alt transition-colors text-left border-b border-divider last:border-b-0">
+                  {{ cat }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -85,7 +89,7 @@
           </div>
 
           <!-- Notes -->
-          <div class="space-y-1.5 md:col-span-2">
+          <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Notes</label>
             <textarea v-model="notes" rows="2" placeholder="Add notes..."
               class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"></textarea>
@@ -132,7 +136,7 @@
           <button type="button" @click="resetForm"
             class="button px-4 py-2 text-sm font-medium rounded-lg hover-surface transition-all duration-200">Clear</button>
           <button type="submit"
-            :disabled="submitting || !title || !amount || amount <= 0 || (is_salary && (!salary_user_id || !salary_month_year))"
+            :disabled="submitting || !amount || amount <= 0 || (is_salary && (!salary_user_id || !salary_month_year))"
             class="px-6 py-2 text-sm font-semibold bg-accent text-accent-foreground rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
             <span v-if="submitting" class="inline-flex items-center gap-2">
               <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -148,6 +152,8 @@
         </div>
       </form>
     </div>
+
+    <div v-if="showCategoryDropdown" class="fixed inset-0 z-40" @click="showCategoryDropdown = false"></div>
   </div>
 </template>
 
@@ -167,18 +173,17 @@ const submitting = ref(false)
 const is_salary = ref(false)
 const salary_user_id = ref<number | null>(null)
 const salary_month_year = ref('')
-const title = ref('')
 const category = ref('')
 const amount = ref<number | null>(null)
 const expense_date = ref(new Date().toISOString().split('T')[0] as string)
 const notes = ref('')
 
-// Image
+const showCategoryDropdown = ref(false)
+
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const uploading = ref(false)
 
-// Get staff users for salary dropdown
 const staffUsers = computed(() => {
   return usersStore.users.filter(u => u.role !== 'admin' && u.is_active)
 })
@@ -187,94 +192,78 @@ const selectedUser = computed(() => {
   return staffUsers.value.find(u => u.id === salary_user_id.value)
 })
 
-// Category suggestions from existing expenses
 const categorySuggestions = computed(() => {
   const cats = new Set<string>()
-  expensesStore.expenses.forEach(e => {
-    if (e.category) cats.add(e.category)
-  })
-  return Array.from(cats)
+  expensesStore.expenses.forEach(e => { if (e.category) cats.add(e.category.toLowerCase()) })
+  return Array.from(cats).sort()
 })
 
+const filteredCategorySuggestions = computed(() => {
+  if (!category.value) return categorySuggestions.value
+  const q = category.value.toLowerCase()
+  return categorySuggestions.value.filter(c => c.toLowerCase().includes(q) && c !== q)
+})
+
+const selectCategory = (cat: string) => { category.value = cat; showCategoryDropdown.value = false }
+
 const handleFileSelect = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
+  const input = event.target as HTMLInputElement; const file = input.files?.[0]
   if (!file) return
-  if (!file.type.startsWith('image/')) {
-    push.error('Please select an image file')
-    return
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    push.error('Image size should be less than 5MB')
-    return
-  }
+  if (!file.type.startsWith('image/')) { push.error('Please select an image file'); return }
+  if (file.size > 5 * 1024 * 1024) { push.error('Image size should be less than 5MB'); return }
   imageFile.value = file
-  const reader = new FileReader()
-  reader.onload = (e) => { imagePreview.value = e.target?.result as string }
-  reader.readAsDataURL(file)
+  const reader = new FileReader(); reader.onload = (e) => { imagePreview.value = e.target?.result as string }; reader.readAsDataURL(file)
 }
 
-const removeImage = () => {
-  imageFile.value = null
-  imagePreview.value = null
-}
+const removeImage = () => { imageFile.value = null; imagePreview.value = null }
 
 const resetForm = () => {
-  is_salary.value = false
-  salary_user_id.value = null
-  salary_month_year.value = ''
-  title.value = ''
-  category.value = ''
-  amount.value = null
+  is_salary.value = false; salary_user_id.value = null; salary_month_year.value = ''
+  category.value = ''; amount.value = null
   expense_date.value = new Date().toISOString().split('T')[0] as string
-  notes.value = ''
-  removeImage()
+  notes.value = ''; removeImage()
 }
 
 const submit = async () => {
-  if (!title.value || !amount.value || amount.value <= 0 || !expense_date.value) return
+  if (!amount.value || amount.value <= 0 || !expense_date.value) return
   if (is_salary.value && (!salary_user_id.value || !salary_month_year.value)) {
     push.error('Employee and month are required for salary')
     return
   }
 
   submitting.value = true
-
   try {
+    // Auto-generate title from date
+    const dateObj = new Date(expense_date.value)
+    const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const autoTitle = is_salary.value
+      ? `Salary - ${selectedUser.value?.name || 'Unknown'} (${salary_month_year.value})`
+      : `Expense - ${formattedDate}`
+
     const newExpense = await expensesStore.createExpense({
       is_salary: is_salary.value,
       salary_user_id: salary_user_id.value,
       salary_month_year: salary_month_year.value || null,
-      title: title.value,
-      category: category.value || null,
+      title: autoTitle,
+      category: category.value.trim().toLowerCase() || null,
       amount: Number(amount.value),
       expense_date: expense_date.value,
       notes: notes.value || null,
     })
 
-    if (!newExpense) {
-      submitting.value = false
-      return
-    }
+    if (!newExpense) { submitting.value = false; return }
 
-    // Upload image if selected
     if (imageFile.value) {
       uploading.value = true
-      const imageUrl = await uploadImage('expenses', newExpense.id, imageFile.value)
+      await uploadImage('expenses', newExpense.id, imageFile.value)
       uploading.value = false
-      if (!imageUrl) {
-        push.warning('Expense created but image upload failed')
-      }
     }
 
     push.success('Expense added successfully!')
     resetForm()
     emit('expense-created')
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (error) {
-    push.error('Failed to create expense')
-  } finally {
-    submitting.value = false
-  }
+  } catch (error) { push.error('Failed to create expense') }
+  finally { submitting.value = false }
 }
 </script>

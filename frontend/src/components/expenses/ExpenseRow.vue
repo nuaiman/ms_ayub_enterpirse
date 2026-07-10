@@ -1,23 +1,15 @@
 <template>
   <div
     class="grid grid-cols-12 items-center py-3.5 px-3 border-b border-default transition-all duration-200 relative text-sm group hover:border-b-accent/50 hover:shadow-[0_1px_0_0_rgba(232,33,39,0.3)]">
-    <!-- Expense Title -->
+
+    <!-- Category -->
     <div class="col-span-3">
       <div class="flex items-center gap-2">
         <div class="min-w-0">
-          <div class="font-medium text-primary truncate">{{ expense.title }}</div>
+          <div class="font-medium text-primary truncate">{{ expense.category || '—' }}</div>
           <div class="text-[10px] text-muted">#{{ expense.id }}</div>
         </div>
       </div>
-    </div>
-
-    <!-- Type (Salary/Regular) -->
-    <div class="col-span-1">
-      <span v-if="expense.is_salary"
-        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
-        Salary
-      </span>
-      <span v-else class="text-xs text-muted">Regular</span>
     </div>
 
     <!-- Amount -->
@@ -30,15 +22,18 @@
       <span class="text-xs text-secondary">{{ formatDate(expense.expense_date) }}</span>
     </div>
 
-    <!-- Category -->
+    <!-- Type (Salary/Regular) -->
     <div class="col-span-2">
-      <span v-if="expense.category" class="text-xs text-secondary">{{ expense.category }}</span>
-      <span v-else class="text-xs text-muted">—</span>
+      <span v-if="expense.is_salary"
+        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+        Salary
+      </span>
+      <span v-else class="text-xs text-muted">Regular</span>
     </div>
 
     <!-- Notes -->
-    <div class="col-span-1">
-      <span v-if="expense.notes" class="text-xs text-muted truncate block max-w-32">{{ expense.notes }}</span>
+    <div class="col-span-2">
+      <span v-if="expense.notes" class="text-xs text-muted truncate block max-w-full">{{ expense.notes }}</span>
       <span v-else class="text-xs text-muted">—</span>
     </div>
 
@@ -69,8 +64,7 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit
+            </svg>Edit
           </button>
 
           <div class="border-t border-divider my-0.5"></div>
@@ -79,8 +73,7 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete
+            </svg>Delete
           </button>
         </div>
       </Transition>
@@ -99,16 +92,11 @@
           </div>
           <div>
             <h2 class="text-lg font-semibold text-primary">Edit Expense</h2>
-            <p class="text-xs text-muted">{{ expense.title }}</p>
+            <p class="text-xs text-muted">#{{ expense.id }}</p>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="space-y-1.5 md:col-span-2">
-            <label class="text-sm font-medium text-primary">Title</label>
-            <input v-model="editForm.title" type="text"
-              class="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
-          </div>
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-primary">Category</label>
             <input v-model="editForm.category" type="text"
@@ -195,7 +183,7 @@
             <p class="text-xs text-muted">৳{{ expense.amount.toFixed(2) }}</p>
           </div>
         </div>
-        <p class="text-sm text-secondary">Delete <strong>{{ expense.title }}</strong>?</p>
+        <p class="text-sm text-secondary">Delete this expense?</p>
         <div class="flex gap-2 justify-end pt-2">
           <button @click="showDeleteConfirm = false"
             class="button px-4 py-2 text-sm rounded-lg hover-surface">Cancel</button>
@@ -228,7 +216,6 @@ const editImageFile = ref<File | null>(null)
 const editImagePreview = ref<string | null>(null)
 
 const editForm = ref({
-  title: props.expense.title,
   category: props.expense.category || '',
   amount: props.expense.amount,
   expense_date: props.expense.expense_date,
@@ -237,7 +224,6 @@ const editForm = ref({
 
 const openEditDialog = () => {
   editForm.value = {
-    title: props.expense.title,
     category: props.expense.category || '',
     amount: props.expense.amount,
     expense_date: props.expense.expense_date,
@@ -254,54 +240,36 @@ const openDeleteConfirm = () => { showDeleteConfirm.value = true; open.value = f
 const triggerEditImageInput = () => editImageInputRef.value?.click()
 
 const handleEditImageSelect = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
+  const input = event.target as HTMLInputElement; const file = input.files?.[0]
   if (!file) return
   if (!file.type.startsWith('image/')) { push.error('Please select an image file'); return }
   if (file.size > 5 * 1024 * 1024) { push.error('Image size should be less than 5MB'); return }
   editImageFile.value = file
-  const reader = new FileReader()
-  reader.onload = (e) => { editImagePreview.value = e.target?.result as string }
-  reader.readAsDataURL(file)
+  const reader = new FileReader(); reader.onload = (e) => { editImagePreview.value = e.target?.result as string }; reader.readAsDataURL(file)
 }
 
 const removeExistingImage = async () => {
   if (!props.expense.image_url) return
-  try {
-    const success = await deleteImage('expenses', props.expense.id, props.expense.image_url)
-    if (success) {
-      editImagePreview.value = null
-      emit('expense-updated')
-    }
-  } catch { push.error('Failed to remove image') }
+  try { await deleteImage('expenses', props.expense.id, props.expense.image_url); editImagePreview.value = null; emit('expense-updated') }
+  catch { push.error('Failed to remove image') }
 }
 
 const submitEdit = async () => {
   try {
-    if (editImageFile.value) {
-      await uploadImage('expenses', props.expense.id, editImageFile.value)
-    }
-
+    if (editImageFile.value) { await uploadImage('expenses', props.expense.id, editImageFile.value) }
     const success = await expensesStore.updateExpense(props.expense.id, {
-      title: editForm.value.title,
       category: editForm.value.category || null,
       amount: editForm.value.amount,
       expense_date: editForm.value.expense_date,
       notes: editForm.value.notes || null,
     })
-    if (success) {
-      showEditDialog.value = false
-      await expensesStore.fetchExpenses()
-      emit('expense-updated')
-    }
+    if (success) { showEditDialog.value = false; await expensesStore.fetchExpenses(); emit('expense-updated') }
   } catch { push.error('Failed to update expense') }
 }
 
 const deleteExpense = async () => {
-  try {
-    const success = await expensesStore.deleteExpense(props.expense.id)
-    if (success) showDeleteConfirm.value = false
-  } catch { push.error('Failed to delete expense') }
+  try { const success = await expensesStore.deleteExpense(props.expense.id); if (success) showDeleteConfirm.value = false }
+  catch { push.error('Failed to delete expense') }
 }
 
 const formatDate = (d: string): string => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
