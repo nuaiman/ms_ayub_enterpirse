@@ -1,9 +1,5 @@
 # SSH files
 ssh.txt
-makefile
-
-# Deploy script
-deploy.bat
 
 # Upload directories
 bucket/
