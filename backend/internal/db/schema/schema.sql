@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS checkouts (
     user_id INTEGER NOT NULL,                      -- User who created this checkout
     item_id INTEGER NOT NULL,                      -- Reference to the item being checked out
     quantity INTEGER NOT NULL DEFAULT 1,           -- Quantity in this checkout
+    weight REAL DEFAULT 0;
     checkout_date DATETIME NOT NULL,               -- Date/time when checkout was created
     receiver_name TEXT,
     receiver_phone TEXT,
@@ -120,11 +121,6 @@ CREATE TABLE IF NOT EXISTS checkouts (
     delivery_charge REAL DEFAULT 0,                -- Amount charged to customer for delivery
     delivery_cost REAL DEFAULT 0,                  -- Our cost for this delivery
     customer_paid REAL DEFAULT 0,                  -- Amount customer paid for this delivery
-    
-    -- Status
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (
-        status IN ('pending', 'in_transit', 'complete')  -- Current checkout status
-    ),
     
     notes TEXT,                                    -- Additional notes about the checkout
     image_url TEXT,                                -- URL to checkout photos/evidence

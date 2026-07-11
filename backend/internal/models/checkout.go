@@ -13,6 +13,7 @@ type Checkout struct {
 	UserID        int64     `json:"user_id"`
 	ItemID        int64     `json:"item_id"`
 	Quantity      int       `json:"quantity"`
+	Weight        *float64  `json:"weight"`
 	CheckoutDate  time.Time `json:"checkout_date"`
 	ReceiverName  *string   `json:"receiver_name"`
 	ReceiverPhone *string   `json:"receiver_phone"`
@@ -30,8 +31,6 @@ type Checkout struct {
 	DeliveryCost   *float64 `json:"delivery_cost"`
 	CustomerPaid   *float64 `json:"customer_paid"`
 
-	// Status
-	Status   string  `json:"status"` // pending, in_transit, complete
 	Notes    *string `json:"notes"`
 	ImageURL *string `json:"image_url"`
 
@@ -46,12 +45,12 @@ type CheckoutModel struct {
 func (m *CheckoutModel) Insert(ctx context.Context, checkout *Checkout) (int64, error) {
 	query := `
 		INSERT INTO checkouts (
-			user_id, item_id, quantity, checkout_date,
+			user_id, item_id, quantity, weight, checkout_date,
 			receiver_name, receiver_phone, type,
 			vehicle_number, driver_name, driver_phone,
 			from_location, to_location,
 			delivery_charge, delivery_cost, customer_paid,
-			status, notes, image_url
+			notes, image_url
 		)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
@@ -60,6 +59,7 @@ func (m *CheckoutModel) Insert(ctx context.Context, checkout *Checkout) (int64, 
 		checkout.UserID,
 		checkout.ItemID,
 		checkout.Quantity,
+		checkout.Weight,
 		checkout.CheckoutDate,
 		checkout.ReceiverName,
 		checkout.ReceiverPhone,
@@ -72,7 +72,6 @@ func (m *CheckoutModel) Insert(ctx context.Context, checkout *Checkout) (int64, 
 		checkout.DeliveryCharge,
 		checkout.DeliveryCost,
 		checkout.CustomerPaid,
-		checkout.Status,
 		checkout.Notes,
 		checkout.ImageURL,
 	)
@@ -90,12 +89,12 @@ func (m *CheckoutModel) Insert(ctx context.Context, checkout *Checkout) (int64, 
 
 func (m *CheckoutModel) GetByID(ctx context.Context, id int64) (*Checkout, error) {
 	query := `
-		SELECT id, user_id, item_id, quantity, checkout_date,
+		SELECT id, user_id, item_id, quantity, weight, checkout_date,
 		       receiver_name, receiver_phone, type,
 		       vehicle_number, driver_name, driver_phone,
 		       from_location, to_location,
 		       delivery_charge, delivery_cost, customer_paid,
-		       status, notes, image_url,
+		       notes, image_url,
 		       created_at, updated_at
 		FROM checkouts
 		WHERE id = ?
@@ -106,12 +105,12 @@ func (m *CheckoutModel) GetByID(ctx context.Context, id int64) (*Checkout, error
 	c := &Checkout{}
 
 	err := row.Scan(
-		&c.ID, &c.UserID, &c.ItemID, &c.Quantity, &c.CheckoutDate,
+		&c.ID, &c.UserID, &c.ItemID, &c.Quantity, &c.Weight, &c.CheckoutDate,
 		&c.ReceiverName, &c.ReceiverPhone, &c.Type,
 		&c.VehicleNumber, &c.DriverName, &c.DriverPhone,
 		&c.FromLocation, &c.ToLocation,
 		&c.DeliveryCharge, &c.DeliveryCost, &c.CustomerPaid,
-		&c.Status, &c.Notes, &c.ImageURL,
+		&c.Notes, &c.ImageURL,
 		&c.CreatedAt, &c.UpdatedAt,
 	)
 
@@ -127,12 +126,12 @@ func (m *CheckoutModel) GetByID(ctx context.Context, id int64) (*Checkout, error
 
 func (m *CheckoutModel) GetAll(ctx context.Context) ([]Checkout, error) {
 	query := `
-		SELECT id, user_id, item_id, quantity, checkout_date,
+		SELECT id, user_id, item_id, quantity, weight, checkout_date,
 		       receiver_name, receiver_phone, type,
 		       vehicle_number, driver_name, driver_phone,
 		       from_location, to_location,
 		       delivery_charge, delivery_cost, customer_paid,
-		       status, notes, image_url,
+		       notes, image_url,
 		       created_at, updated_at
 		FROM checkouts
 		ORDER BY id DESC
@@ -150,12 +149,12 @@ func (m *CheckoutModel) GetAll(ctx context.Context) ([]Checkout, error) {
 		var c Checkout
 
 		err := rows.Scan(
-			&c.ID, &c.UserID, &c.ItemID, &c.Quantity, &c.CheckoutDate,
+			&c.ID, &c.UserID, &c.ItemID, &c.Quantity, &c.Weight, &c.CheckoutDate,
 			&c.ReceiverName, &c.ReceiverPhone, &c.Type,
 			&c.VehicleNumber, &c.DriverName, &c.DriverPhone,
 			&c.FromLocation, &c.ToLocation,
 			&c.DeliveryCharge, &c.DeliveryCost, &c.CustomerPaid,
-			&c.Status, &c.Notes, &c.ImageURL,
+			&c.Notes, &c.ImageURL,
 			&c.CreatedAt, &c.UpdatedAt,
 		)
 		if err != nil {
@@ -174,12 +173,12 @@ func (m *CheckoutModel) GetAll(ctx context.Context) ([]Checkout, error) {
 
 func (m *CheckoutModel) GetByItemID(ctx context.Context, itemID int64) ([]Checkout, error) {
 	query := `
-		SELECT id, user_id, item_id, quantity, checkout_date,
+		SELECT id, user_id, item_id, quantity, weight, checkout_date,
 		       receiver_name, receiver_phone, type,
 		       vehicle_number, driver_name, driver_phone,
 		       from_location, to_location,
 		       delivery_charge, delivery_cost, customer_paid,
-		       status, notes, image_url,
+		       notes, image_url,
 		       created_at, updated_at
 		FROM checkouts
 		WHERE item_id = ?
@@ -198,12 +197,12 @@ func (m *CheckoutModel) GetByItemID(ctx context.Context, itemID int64) ([]Checko
 		var c Checkout
 
 		err := rows.Scan(
-			&c.ID, &c.UserID, &c.ItemID, &c.Quantity, &c.CheckoutDate,
+			&c.ID, &c.UserID, &c.ItemID, &c.Quantity, &c.Weight, &c.CheckoutDate,
 			&c.ReceiverName, &c.ReceiverPhone, &c.Type,
 			&c.VehicleNumber, &c.DriverName, &c.DriverPhone,
 			&c.FromLocation, &c.ToLocation,
 			&c.DeliveryCharge, &c.DeliveryCost, &c.CustomerPaid,
-			&c.Status, &c.Notes, &c.ImageURL,
+			&c.Notes, &c.ImageURL,
 			&c.CreatedAt, &c.UpdatedAt,
 		)
 		if err != nil {
@@ -218,17 +217,6 @@ func (m *CheckoutModel) GetByItemID(ctx context.Context, itemID int64) ([]Checko
 	}
 
 	return checkouts, nil
-}
-
-func (m *CheckoutModel) UpdateStatus(ctx context.Context, id int64, status string) error {
-	query := `
-		UPDATE checkouts
-		SET status = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
-	`
-
-	_, err := m.DB.ExecContext(ctx, query, status, id)
-	return err
 }
 
 func (m *CheckoutModel) UpdateFields(ctx context.Context, id int64, updates map[string]any) error {
@@ -255,17 +243,18 @@ func (m *CheckoutModel) UpdateFields(ctx context.Context, id int64, updates map[
 func (m *CheckoutModel) Update(ctx context.Context, id int64, checkout *Checkout) error {
 	query := `
 		UPDATE checkouts
-		SET quantity = ?, receiver_name = ?, receiver_phone = ?,
+		SET quantity = ?, weight = ?, receiver_name = ?, receiver_phone = ?,
 		    vehicle_number = ?, driver_name = ?, driver_phone = ?,
 		    from_location = ?, to_location = ?,
 		    delivery_charge = ?, delivery_cost = ?, customer_paid = ?,
-		    status = ?, notes = ?, image_url = ?,
+		    notes = ?, image_url = ?,
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
 
 	_, err := m.DB.ExecContext(ctx, query,
 		checkout.Quantity,
+		checkout.Weight,
 		checkout.ReceiverName,
 		checkout.ReceiverPhone,
 		checkout.VehicleNumber,
@@ -276,7 +265,6 @@ func (m *CheckoutModel) Update(ctx context.Context, id int64, checkout *Checkout
 		checkout.DeliveryCharge,
 		checkout.DeliveryCost,
 		checkout.CustomerPaid,
-		checkout.Status,
 		checkout.Notes,
 		checkout.ImageURL,
 		id,

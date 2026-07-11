@@ -91,7 +91,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Post("/", higherManagementOnly(handler.CreateCheckoutHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetCheckoutHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateCheckoutHandler))
-			r.Patch("/{id}/status", higherManagementOnly(handler.ChangeCheckoutStatusHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteCheckoutHandler))
 		})
 

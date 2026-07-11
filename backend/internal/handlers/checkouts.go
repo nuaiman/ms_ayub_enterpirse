@@ -12,11 +12,12 @@ import (
 
 func (h *Handler) CreateCheckoutHandler(w http.ResponseWriter, r *http.Request) {
 	type request struct {
-		Type          string  `json:"type"`
-		ItemID        int64   `json:"item_id"`
-		Quantity      int     `json:"quantity"`
-		ReceiverName  *string `json:"receiver_name"`
-		ReceiverPhone *string `json:"receiver_phone"`
+		Type          string   `json:"type"`
+		ItemID        int64    `json:"item_id"`
+		Quantity      int      `json:"quantity"`
+		Weight        *float64 `json:"weight"`
+		ReceiverName  *string  `json:"receiver_name"`
+		ReceiverPhone *string  `json:"receiver_phone"`
 
 		// Delivery Details
 		VehicleNumber *string `json:"vehicle_number"`
@@ -28,7 +29,7 @@ func (h *Handler) CreateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		// Financial
 		DeliveryCharge *float64 `json:"delivery_charge"`
 		DeliveryCost   *float64 `json:"delivery_cost"`
-		CustomerPaid   *float64 `json:"customer_paid"` // ADD THIS
+		CustomerPaid   *float64 `json:"customer_paid"`
 
 		Notes    *string `json:"notes"`
 		ImageURL *string `json:"image_url"`
@@ -41,7 +42,6 @@ func (h *Handler) CreateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Validate required fields
 	if req.Type == "" || req.ItemID == 0 || req.Quantity <= 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "type, item_id, and quantity are required")
 		return
@@ -53,20 +53,17 @@ func (h *Handler) CreateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Validate item exists
 	item, err := h.app.Models.Item.GetByID(r.Context(), req.ItemID)
 	if err != nil || item == nil {
 		utils.ErrorJson(w, http.StatusNotFound, "item not found")
 		return
 	}
 
-	// Check quantity
 	if item.Quantity < req.Quantity {
 		utils.ErrorJson(w, http.StatusBadRequest, "insufficient item quantity")
 		return
 	}
 
-	// For delivery, validate required fields
 	if req.Type == "delivery" {
 		if req.ToLocation == nil || *req.ToLocation == "" {
 			utils.ErrorJson(w, http.StatusBadRequest, "to_location is required for delivery type")
@@ -84,6 +81,7 @@ func (h *Handler) CreateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		UserID:         userID,
 		ItemID:         req.ItemID,
 		Quantity:       req.Quantity,
+		Weight:         req.Weight,
 		CheckoutDate:   time.Now(),
 		ReceiverName:   req.ReceiverName,
 		ReceiverPhone:  req.ReceiverPhone,
@@ -95,8 +93,7 @@ func (h *Handler) CreateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		ToLocation:     req.ToLocation,
 		DeliveryCharge: req.DeliveryCharge,
 		DeliveryCost:   req.DeliveryCost,
-		CustomerPaid:   req.CustomerPaid, // ADD THIS
-		Status:         "pending",
+		CustomerPaid:   req.CustomerPaid,
 		Notes:          req.Notes,
 		ImageURL:       req.ImageURL,
 	}
@@ -163,9 +160,10 @@ func (h *Handler) GetAllCheckoutsHandler(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) UpdateCheckoutHandler(w http.ResponseWriter, r *http.Request) {
 	type request struct {
-		Quantity      *int    `json:"quantity"`
-		ReceiverName  *string `json:"receiver_name"`
-		ReceiverPhone *string `json:"receiver_phone"`
+		Quantity      *int     `json:"quantity"`
+		Weight        *float64 `json:"weight"`
+		ReceiverName  *string  `json:"receiver_name"`
+		ReceiverPhone *string  `json:"receiver_phone"`
 
 		// Delivery Details
 		VehicleNumber *string `json:"vehicle_number"`
@@ -201,11 +199,6 @@ func (h *Handler) UpdateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if existing.Status == "complete" {
-		utils.ErrorJson(w, http.StatusBadRequest, "cannot update completed checkouts")
-		return
-	}
-
 	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
 	if !ok {
 		utils.ErrorJson(w, http.StatusUnauthorized, "invalid user context")
@@ -230,6 +223,9 @@ func (h *Handler) UpdateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 		updates["quantity"] = *req.Quantity
 	}
 
+	if req.Weight != nil {
+		updates["weight"] = *req.Weight
+	}
 	if req.ReceiverName != nil {
 		updates["receiver_name"] = *req.ReceiverName
 	}
@@ -292,77 +288,6 @@ func (h *Handler) UpdateCheckoutHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	utils.SuccessJson(w, http.StatusOK, "checkout updated successfully", updatedCheckout)
-}
-
-func (h *Handler) ChangeCheckoutStatusHandler(w http.ResponseWriter, r *http.Request) {
-	type request struct {
-		Status string `json:"status"`
-	}
-
-	var req request
-
-	if err := utils.ReadJson(w, r, &req); err != nil {
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	validStatuses := map[string]bool{
-		"pending": true, "in_transit": true, "complete": true,
-	}
-	if !validStatuses[req.Status] {
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid status")
-		return
-	}
-
-	checkoutID, ok := utils.GetParamID(w, r)
-	if !ok {
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid checkout id")
-		return
-	}
-
-	existing, err := h.app.Models.Checkout.GetByID(r.Context(), checkoutID)
-	if err != nil || existing == nil {
-		utils.ErrorJson(w, http.StatusNotFound, "checkout not found")
-		return
-	}
-
-	if existing.Status == "complete" {
-		utils.ErrorJson(w, http.StatusBadRequest, "cannot change status of completed checkout")
-		return
-	}
-
-	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
-	if !ok {
-		utils.ErrorJson(w, http.StatusUnauthorized, "invalid user context")
-		return
-	}
-
-	err = h.app.Models.Checkout.UpdateStatus(r.Context(), checkoutID, req.Status)
-	if err != nil {
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to update checkout status")
-		return
-	}
-
-	// Audit log
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
-		UserID:      userID,
-		Action:      "update",
-		Description: fmt.Sprintf("Changed checkout #%d status to %s", checkoutID, req.Status),
-		EntityType:  "checkouts",
-		EntityID:    checkoutID,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
-	updatedCheckout, err := h.app.Models.Checkout.GetByID(r.Context(), checkoutID)
-	if err != nil || updatedCheckout == nil {
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch updated checkout")
-		return
-	}
-
-	utils.SuccessJson(w, http.StatusOK, "checkout status updated successfully", updatedCheckout)
 }
 
 func (h *Handler) DeleteCheckoutHandler(w http.ResponseWriter, r *http.Request) {
