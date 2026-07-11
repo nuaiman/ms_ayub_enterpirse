@@ -1,13 +1,13 @@
 // src/types/checkout.ts
 
 export type CheckoutType = "pickup" | "delivery";
-export type CheckoutStatus = "pending" | "in_transit" | "complete";
 
 export interface Checkout {
   id: number;
   user_id: number;
   item_id: number;
   quantity: number;
+  weight?: number | null;
   checkout_date: string;
   receiver_name?: string | null;
   receiver_phone?: string | null;
@@ -25,8 +25,6 @@ export interface Checkout {
   delivery_cost?: number | null;
   customer_paid?: number | null;
 
-  // Status
-  status: CheckoutStatus;
   notes?: string | null;
   image_url?: string | null;
 
@@ -38,6 +36,7 @@ export interface CreateCheckoutPayload {
   type: CheckoutType;
   item_id: number;
   quantity: number;
+  weight?: number | null;
   receiver_name?: string | null;
   receiver_phone?: string | null;
 
@@ -59,6 +58,7 @@ export interface CreateCheckoutPayload {
 
 export interface UpdateCheckoutPayload {
   quantity?: number;
+  weight?: number | null;
   receiver_name?: string | null;
   receiver_phone?: string | null;
 

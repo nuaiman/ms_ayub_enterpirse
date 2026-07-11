@@ -78,17 +78,16 @@
     </div>
 
     <div class="flex-1 min-h-0 overflow-auto">
-      <div class="min-w-[768px]">
-        <div
-          class="grid grid-cols-12 items-center py-3 px-3 border-b border-divider text-xs font-semibold text-muted uppercase tracking-wider shrink-0 bg-surface-alt rounded-t-lg">
-          <div class="col-span-1">ID</div>
-          <div class="col-span-2">Type / Status</div>
-          <div class="col-span-2">Item / Customer</div>
-          <div class="col-span-1">Qty</div>
-          <div class="col-span-2">Route / Receiver</div>
-          <div class="col-span-2">Financial</div>
-          <div class="col-span-2 text-right">Actions</div>
-        </div>
+      <div class="min-w-3xl">
+        <div class="grid grid-cols-12 items-center py-3 px-3 border-b border-divider text-xs font-semibold text-muted uppercase tracking-wider shrink-0 bg-surface-alt rounded-t-lg">
+  <div class="col-span-1">ID</div>
+  <div class="col-span-1">Type</div>
+  <div class="col-span-2">Item / Customer</div>
+  <div class="col-span-1">Qty / Wt</div>
+  <div class="col-span-2">Route / Receiver</div>
+  <div class="col-span-2">Financial</div>
+  <div class="col-span-3 text-right">Actions</div>
+</div>
 
         <div v-if="loading" class="flex items-center justify-center py-12">
           <svg class="animate-spin w-10 h-10 text-accent" fill="none" viewBox="0 0 24 24">
@@ -134,8 +133,6 @@
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                 :class="selectedCheckout.type === 'pickup' ? 'status-info' : 'status-success'">{{ selectedCheckout.type
                 }}</span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
-                :class="getStatusClass(selectedCheckout.status)">{{ selectedCheckout.status }}</span>
             </div>
           </div>
         </div>
@@ -313,8 +310,30 @@ const applySort = (key: string) => { currentSort.value = key; showSortMenu.value
 const copyToClipboard = async () => {
   const checkouts = filteredCheckouts.value
   if (checkouts.length === 0) return
-  const headers = ['ID', 'Type', 'Status', 'Item ID', 'Quantity', 'Receiver', 'Receiver Phone', 'From', 'To', 'Vehicle', 'Driver', 'Charge', 'Cost', 'Notes']
-  const rows = checkouts.map(c => [c.id, c.type, c.status, c.item_id, c.quantity, c.receiver_name || '', c.receiver_phone || '', c.from_location || '', c.to_location || '', c.vehicle_number || '', c.driver_name || '', c.delivery_charge || '', c.delivery_cost || '', c.notes || ''])
+ const headers = [
+  'ID', 'Type', 'Item ID', 'Quantity', 'Weight', 
+  'Receiver', 'Receiver Phone', 'From', 'To', 
+  'Vehicle', 'Driver', 'Driver Phone',
+  'Charge', 'Cost', 'Paid', 'Notes'
+]
+  const rows = checkouts.map(c => [
+  c.id, 
+  c.type, 
+  c.item_id, 
+  c.quantity, 
+  c.weight || '', 
+  c.receiver_name || '', 
+  c.receiver_phone || '', 
+  c.from_location || '', 
+  c.to_location || '', 
+  c.vehicle_number || '', 
+  c.driver_name || '', 
+  c.driver_phone || '',
+  c.delivery_charge || '', 
+  c.delivery_cost || '', 
+  c.customer_paid || '', 
+  c.notes || ''
+])
   const tsv = [headers, ...rows].map(r => r.map(c => String(c).replace(/\t/g, ' ').replace(/\n/g, ' ')).join('\t')).join('\n')
   try {
     await navigator.clipboard.writeText(tsv); copied.value = true; push.success('Copied!')
@@ -331,11 +350,19 @@ const filteredCheckouts = computed(() => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     result = result.filter(c =>
-      String(c.id).includes(q) || c.type.includes(q) || c.status.includes(q) || String(c.item_id).includes(q) ||
-      (c.receiver_name && c.receiver_name.toLowerCase().includes(q)) || (c.receiver_phone && c.receiver_phone.includes(q)) ||
-      (c.from_location && c.from_location.toLowerCase().includes(q)) || (c.to_location && c.to_location.toLowerCase().includes(q)) ||
-      (c.vehicle_number && c.vehicle_number.toLowerCase().includes(q)) || (c.driver_name && c.driver_name.toLowerCase().includes(q)) ||
-      (c.notes && c.notes.toLowerCase().includes(q))
+String(c.id).includes(q) || 
+c.type.includes(q) || 
+String(c.item_id).includes(q) ||
+String(c.quantity).includes(q) ||
+(c.weight && String(c.weight).includes(q)) ||
+(c.receiver_name && c.receiver_name.toLowerCase().includes(q)) || 
+(c.receiver_phone && c.receiver_phone.includes(q)) ||
+(c.from_location && c.from_location.toLowerCase().includes(q)) || 
+(c.to_location && c.to_location.toLowerCase().includes(q)) ||
+(c.vehicle_number && c.vehicle_number.toLowerCase().includes(q)) || 
+(c.driver_name && c.driver_name.toLowerCase().includes(q)) ||
+(c.driver_phone && c.driver_phone.includes(q)) ||
+(c.notes && c.notes.toLowerCase().includes(q))
     )
   }
   if (currentSort.value === 'newest') result.sort((a, b) => b.id - a.id)
