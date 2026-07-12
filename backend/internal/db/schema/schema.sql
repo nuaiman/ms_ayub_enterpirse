@@ -35,28 +35,32 @@ CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     notes TEXT,
-    name TEXT NOT NULL,
-    customer_phone TEXT NOT NULL,
+    
+    -- Product & Storage Info
+    product_name TEXT NOT NULL,
+    storage_name TEXT,
+    account_name TEXT,
+    lot_number TEXT,
+    
+    -- Customer Fields
+    customer_phone TEXT,                  -- Made optional
     customer_email TEXT,
+    
+    -- Category
     category TEXT,
     subcategory TEXT,
+    
+    -- Item Details
     quantity_unit TEXT NOT NULL DEFAULT 'pcs' CHECK (
         quantity_unit IN ('bag', 'bottle', 'box', 'can', 'carton', 'cup', 'dozen', 'gallon', 'pack', 'pair', 'pcs', 'roll', 'set', 'sheet', 'unit')
     ),
     quantity INTEGER NOT NULL DEFAULT 1,
-    weight REAL,
-    weight_unit TEXT CHECK (weight_unit IN ('mg', 'g', 'oz', 'lb', 'kg', 'ton')) DEFAULT 'kg',
-    width REAL,
-    height REAL,
-    length REAL,
-    dimension_unit TEXT CHECK (dimension_unit IN ('mm', 'cm', 'in', 'ft', 'm', 'yd', 'km')) DEFAULT 'in',
-    duration_type TEXT CHECK (duration_type IN ('day', 'week', 'month', 'year')),
-    duration INTEGER,
-    start_date DATE,
-    amount REAL NOT NULL,
+    
+    -- Revenue Details
+    amount REAL DEFAULT 0,
     deposit REAL DEFAULT 0,
     customer_paid REAL DEFAULT 0,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'complete')),
+    
     image_url TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -64,11 +68,11 @@ CREATE TABLE IF NOT EXISTS items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);
-CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
 CREATE INDEX IF NOT EXISTS idx_items_customer_phone ON items(customer_phone);
 CREATE INDEX IF NOT EXISTS idx_items_category ON items(category);
 CREATE INDEX IF NOT EXISTS idx_items_subcategory ON items(subcategory);
-CREATE INDEX IF NOT EXISTS idx_items_start_date ON items(start_date);
+CREATE INDEX IF NOT EXISTS idx_items_product_name ON items(product_name);
+CREATE INDEX IF NOT EXISTS idx_items_lot_number ON items(lot_number);
 
 --------------------------------------------------
 -- CHECKOUTS (Operations/Logistics)

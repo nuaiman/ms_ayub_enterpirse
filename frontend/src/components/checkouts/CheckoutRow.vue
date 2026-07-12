@@ -226,7 +226,7 @@ const editImageFile = ref<File | null>(null)
 const editImagePreview = ref<string | null>(null)
 
 const item = computed(() => itemsStore.items.find(i => i.id === props.checkout.item_id))
-const itemName = computed(() => item.value?.name || `Item #${props.checkout.item_id}`)
+const itemName = computed(() => item.value?.product_name || `Item #${props.checkout.item_id}`)
 
 const editForm = reactive({
   type: props.checkout.type as 'pickup' | 'delivery',

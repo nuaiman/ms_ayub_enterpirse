@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/stores/items.ts
-
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import api from "@/utils/axios";
 import type { ApiResponse } from "@/types/auth";
 import type { Item, CreateItemPayload, UpdateItemPayload } from "@/types/item";
@@ -56,35 +54,12 @@ export const useItemsStore = defineStore("items", () => {
   const createItem = async (payload: CreateItemPayload) => {
     displayLoader();
     try {
-      // Set defaults
-      const cleanPayload: any = {
-        ...payload,
-        quantity_unit: payload.quantity_unit || "pcs",
-        quantity: payload.quantity || 1,
-        amount: payload.amount || 0,
-        deposit: payload.deposit || 0,
-      };
+      console.log("📤 Creating item with payload:", payload);
 
-      // Remove undefined fields, but keep null values
-      Object.keys(cleanPayload).forEach((key) => {
-        if (cleanPayload[key] === undefined) {
-          delete cleanPayload[key];
-        }
-      });
+      const res = await api.post<ApiResponse<Item>>("/items", payload);
 
-      // Validate required fields
-      if (!cleanPayload.name || !cleanPayload.customer_phone) {
-        push.error("Name and customer phone are required");
-        return null;
-      }
+      console.log("📥 Create item response:", res.data);
 
-      // Validate contract fields
-      if (cleanPayload.duration_type && !cleanPayload.amount) {
-        push.error("Amount is required for storage contracts");
-        return null;
-      }
-
-      const res = await api.post<ApiResponse<Item>>("/items", cleanPayload);
       if (!res.data.success) {
         push.error(res.data.message);
         return null;
@@ -94,6 +69,7 @@ export const useItemsStore = defineStore("items", () => {
       return res.data.data;
     } catch (error) {
       const err = error as AxiosError<ApiResponse<null>>;
+      console.error("❌ Create item error:", err);
       push.error(err.response?.data?.message || "Failed to create item");
       return null;
     } finally {
@@ -104,7 +80,6 @@ export const useItemsStore = defineStore("items", () => {
   const updateItem = async (id: number, payload: UpdateItemPayload) => {
     displayLoader();
     try {
-      // Clean up payload - remove undefined fields, but KEEP null values
       const cleanPayload: any = { ...payload };
       Object.keys(cleanPayload).forEach((key) => {
         if (cleanPayload[key] === undefined) {
@@ -112,7 +87,10 @@ export const useItemsStore = defineStore("items", () => {
         }
       });
 
+      console.log("📤 Updating item:", id, cleanPayload);
+
       const res = await api.patch<ApiResponse<Item>>(`/items/${id}`, cleanPayload);
+
       if (!res.data.success) {
         push.error(res.data.message);
         return false;
@@ -124,6 +102,7 @@ export const useItemsStore = defineStore("items", () => {
       return true;
     } catch (error) {
       const err = error as AxiosError<ApiResponse<null>>;
+      console.error("❌ Update item error:", err);
       push.error(err.response?.data?.message || "Failed to update item");
       return false;
     } finally {
@@ -174,44 +153,32 @@ export const useItemsStore = defineStore("items", () => {
     }
   };
 
-  // Get items with active storage contracts
-  const getActiveContracts = () => {
-    return items.value.filter((item) => item.duration_type && item.status === "active");
-  };
-
-  // Get items without contracts
-  const getItemsWithoutContracts = () => {
-    return items.value.filter((item) => !item.duration_type || !item.status);
-  };
-
-  // Get completed contracts
-  const getCompletedContracts = () => {
-    return items.value.filter((item) => item.status === "complete");
-  };
-
-  // Search items by customer name or phone
-  const searchItems = (query: string) => {
-    const searchTerm = query.toLowerCase();
-    return items.value.filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchTerm) ||
-        item.customer_phone.includes(searchTerm) ||
-        (item.customer_email && item.customer_email.toLowerCase().includes(searchTerm)),
-    );
-  };
-
-  // Get items by category
+  // Computed helpers
   const getItemsByCategory = (category: string) => {
     return items.value.filter((item) => item.category === category);
   };
 
-  // Get all unique categories
-  const getCategories = () => {
+  const getCategories = computed(() => {
     const categories = new Set<string>();
     items.value.forEach((item) => {
       if (item.category) categories.add(item.category);
     });
     return Array.from(categories);
+  });
+
+  const searchItems = (query: string) => {
+    const searchTerm = query.toLowerCase();
+    return items.value.filter(
+      (item) =>
+        item.product_name.toLowerCase().includes(searchTerm) ||
+        (item.customer_phone && item.customer_phone.includes(searchTerm)) ||
+        (item.customer_email && item.customer_email.toLowerCase().includes(searchTerm)) ||
+        (item.category && item.category.toLowerCase().includes(searchTerm)) ||
+        (item.subcategory && item.subcategory.toLowerCase().includes(searchTerm)) ||
+        (item.lot_number && item.lot_number.toLowerCase().includes(searchTerm)) ||
+        (item.storage_name && item.storage_name.toLowerCase().includes(searchTerm)) ||
+        (item.account_name && item.account_name.toLowerCase().includes(searchTerm))
+    );
   };
 
   return {
@@ -223,11 +190,8 @@ export const useItemsStore = defineStore("items", () => {
     updateItem,
     updateItemStatus,
     deleteItem,
-    getActiveContracts,
-    getItemsWithoutContracts,
-    getCompletedContracts,
-    searchItems,
     getItemsByCategory,
     getCategories,
+    searchItems,
   };
 });

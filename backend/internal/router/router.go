@@ -81,7 +81,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Post("/", protected(handler.CreateItemHandler))
 			r.Get("/{id}", protected(handler.GetItemHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateItemHandler))
-			r.Patch("/{id}/status", higherManagementOnly(handler.ChangeItemStatusHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteItemHandler))
 		})
 
