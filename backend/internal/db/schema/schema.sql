@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS items (
     lot_number TEXT,
     
     -- Customer Fields
-    customer_phone TEXT,                  -- Made optional
+    customer_phone TEXT,
     customer_email TEXT,
     
     -- Category
@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS items (
         quantity_unit IN ('bag', 'bottle', 'box', 'can', 'carton', 'cup', 'dozen', 'gallon', 'pack', 'pair', 'pcs', 'roll', 'set', 'sheet', 'unit')
     ),
     quantity INTEGER NOT NULL DEFAULT 1,
+    weight REAL DEFAULT 0,
+    weight_unit TEXT CHECK (weight_unit IN ('mg', 'g', 'oz', 'lb', 'kg', 'ton')) DEFAULT 'kg',
     
     -- Revenue Details
     amount REAL DEFAULT 0,

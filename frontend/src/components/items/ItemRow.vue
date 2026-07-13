@@ -7,12 +7,8 @@
     <div class="col-span-3">
       <div class="flex items-center gap-3">
         <div class="shrink-0">
-          <div v-if="item.image_url" class="w-9 h-9 rounded-lg overflow-hidden border border-default">
-            <img :src="getImageUrl(item.image_url) || undefined" :alt="item.product_name" class="w-full h-full object-cover" />
-          </div>
-          <div v-else class="w-9 h-9 rounded-lg bg-surface-alt border border-default flex items-center justify-center">
-            <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-          </div>
+          <div v-if="item.image_url" class="w-9 h-9 rounded-lg overflow-hidden border border-default"><img :src="getImageUrl(item.image_url) || undefined" :alt="item.product_name" class="w-full h-full object-cover" /></div>
+          <div v-else class="w-9 h-9 rounded-lg bg-surface-alt border border-default flex items-center justify-center"><svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg></div>
         </div>
         <div class="min-w-0">
           <div class="font-medium text-primary truncate">{{ item.product_name }}</div>
@@ -26,10 +22,7 @@
 
     <!-- Category -->
     <div class="col-span-2">
-      <div v-if="item.category">
-        <span class="text-xs text-secondary">{{ item.category }}</span>
-        <div v-if="item.subcategory" class="text-[10px] text-muted mt-0.5">{{ item.subcategory }}</div>
-      </div>
+      <div v-if="item.category"><span class="text-xs text-secondary">{{ item.category }}</span><div v-if="item.subcategory" class="text-[10px] text-muted mt-0.5">{{ item.subcategory }}</div></div>
       <span v-else class="text-xs text-muted">—</span>
     </div>
 
@@ -63,9 +56,7 @@
 
     <!-- Actions -->
     <div class="col-span-2 flex justify-end pr-0.5 relative" @click.stop>
-      <button @click="open = !open" class="w-7 h-7 flex items-center justify-center border border-default rounded-md hover:bg-surface-alt transition-all duration-200 opacity-0 group-hover:opacity-100" :class="{ 'opacity-100': open }">
-        <svg class="w-3.5 h-3.5 text-secondary" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-      </button>
+      <button @click="open = !open" class="w-7 h-7 flex items-center justify-center border border-default rounded-md hover:bg-surface-alt transition-all duration-200 opacity-0 group-hover:opacity-100" :class="{ 'opacity-100': open }"><svg class="w-3.5 h-3.5 text-secondary" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg></button>
       <Transition enter-active-class="transition ease-out duration-200" enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0" leave-active-class="transition ease-in duration-150" leave-from-class="opacity-100 scale-100 translate-y-0" leave-to-class="opacity-0 scale-95 translate-y-1">
         <div v-if="open" class="absolute right-0 top-9 w-44 bg-surface border border-default rounded-xl shadow-lg overflow-hidden z-50 py-1">
           <div class="px-3 py-1.5 border-b border-divider"><p class="text-[11px] font-semibold text-muted uppercase">Actions</p></div>
@@ -107,6 +98,10 @@
           <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Quantity</label><div class="flex items-center gap-2"><button type="button" @click="editForm.quantity > 1 ? editForm.quantity-- : null" class="w-9 h-9 flex items-center justify-center rounded-lg border border-default text-secondary hover:bg-surface-alt shrink-0">−</button><input v-model.number="editForm.quantity" type="number" min="1" class="input flex-1 px-3 py-2 rounded-lg text-center" /><button type="button" @click="editForm.quantity++" class="w-9 h-9 flex items-center justify-center rounded-lg border border-default text-secondary hover:bg-surface-alt shrink-0">+</button></div></div>
           <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Unit</label><select v-model="editForm.quantity_unit" class="input w-full px-3 py-2 rounded-lg"><option value="bag">Bag</option><option value="bottle">Bottle</option><option value="box">Box</option><option value="can">Can</option><option value="carton">Carton</option><option value="cup">Cup</option><option value="dozen">Dozen</option><option value="gallon">Gallon</option><option value="pack">Pack</option><option value="pair">Pair</option><option value="pcs">Pieces</option><option value="roll">Roll</option><option value="set">Set</option><option value="sheet">Sheet</option><option value="unit">Unit</option></select></div>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Weight</label><input v-model.number="editForm.weight" type="number" step="0.001" min="0" class="input w-full px-3 py-2 rounded-lg" /></div>
+          <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Weight Unit</label><select v-model="editForm.weight_unit" class="input w-full px-3 py-2 rounded-lg"><option value="kg">kg</option><option value="g">g</option><option value="mg">mg</option><option value="oz">oz</option><option value="lb">lb</option><option value="ton">ton</option></select></div>
+        </div>
         <div class="grid grid-cols-3 gap-4">
           <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Amount</label><input v-model.number="editForm.amount" type="number" step="0.01" class="input w-full px-3 py-2 rounded-lg" /></div>
           <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Deposit</label><input v-model.number="editForm.deposit" type="number" step="0.01" class="input w-full px-3 py-2 rounded-lg" /></div>
@@ -118,47 +113,7 @@
     </BaseDialog>
 
     <!-- New Lot Dialog -->
-    <BaseDialog v-model="showNewLotDialog" size="lg" @click.stop>
-      <CreateItemForm :prefill="newLotPrefill" @item-created="handleNewLotCreated" />
-    </BaseDialog>
-
-    <!-- Detail Dialog -->
-    <BaseDialog v-model="showDetailDialog" size="lg" @click.stop>
-      <div v-if="item" class="space-y-5">
-        <div class="flex items-center gap-4">
-          <div v-if="item.image_url" class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-default"><img :src="getImageUrl(item.image_url) || undefined" :alt="item.product_name" class="w-full h-full object-cover" /></div>
-          <div>
-            <h2 class="text-xl font-bold text-primary">{{ item.product_name }}</h2>
-            <p v-if="item.customer_phone" class="text-sm text-muted">{{ item.customer_phone }}</p>
-            <p v-if="item.customer_email" class="text-xs text-muted">{{ item.customer_email }}</p>
-            <div v-if="item.lot_number" class="mt-1"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-surface-alt text-secondary">Lot: {{ item.lot_number }}</span></div>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="space-y-1"><p class="text-xs text-muted uppercase">Storage Name</p><p class="text-sm text-primary">{{ item.storage_name || '—' }}</p></div>
-          <div class="space-y-1"><p class="text-xs text-muted uppercase">Account Name</p><p class="text-sm text-primary">{{ item.account_name || '—' }}</p></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="space-y-1"><p class="text-xs text-muted uppercase">Category</p><p class="text-sm text-primary">{{ item.category || '—' }}</p></div>
-          <div class="space-y-1"><p class="text-xs text-muted uppercase">Subcategory</p><p class="text-sm text-primary">{{ item.subcategory || '—' }}</p></div>
-        </div>
-        <div class="space-y-1"><p class="text-xs text-muted uppercase">Quantity</p><p class="text-sm text-primary">{{ item.quantity }} {{ item.quantity_unit }}</p></div>
-        <div class="p-4 rounded-xl border border-default bg-surface-alt">
-          <h3 class="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Financial</h3>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="space-y-1"><p class="text-[10px] text-muted uppercase">Amount</p><p class="text-sm font-semibold text-primary">৳{{ item.amount.toFixed(2) }}</p></div>
-            <div class="space-y-1"><p class="text-[10px] text-muted uppercase">Deposit</p><p class="text-sm font-semibold text-info-text">৳{{ item.deposit.toFixed(2) }}</p></div>
-            <div class="space-y-1"><p class="text-[10px] text-muted uppercase">Paid</p><p class="text-sm font-semibold text-success-text">৳{{ (item.customer_paid || 0).toFixed(2) }}</p></div>
-            <div class="space-y-1"><p class="text-[10px] text-muted uppercase">Due</p><p class="text-sm font-semibold" :class="getItemDue(item) > 0 ? 'text-warning-text' : 'text-success-text'">৳{{ getItemDue(item).toFixed(2) }}</p></div>
-          </div>
-        </div>
-        <div v-if="item.notes" class="space-y-1"><p class="text-xs text-muted uppercase">Notes</p><p class="text-sm text-primary whitespace-pre-wrap">{{ item.notes }}</p></div>
-        <div class="flex justify-end gap-3 pt-2 border-t border-divider">
-          <button @click="openNewLotFromDetail" class="button px-4 py-2 text-sm font-medium rounded-lg hover-surface transition-all duration-200 inline-flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Add New Lot</button>
-          <button @click="showDetailDialog = false" class="button px-4 py-2 text-sm rounded-lg hover-surface">Close</button>
-        </div>
-      </div>
-    </BaseDialog>
+    <BaseDialog v-model="showNewLotDialog" size="lg" @click.stop><CreateItemForm :prefill="newLotPrefill" @item-created="handleNewLotCreated" /></BaseDialog>
 
     <!-- Delete Dialog -->
     <BaseDialog v-model="showDeleteDialog" size="sm" @click.stop>
@@ -183,7 +138,6 @@ const itemsStore = useItemsStore()
 const open = ref(false)
 const showEditDialog = ref(false)
 const showNewLotDialog = ref(false)
-const showDetailDialog = ref(false)
 const showDeleteDialog = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -196,6 +150,7 @@ const editForm = reactive({
   customer_phone: '', customer_email: null as string | null,
   category: null as string | null, subcategory: null as string | null,
   quantity: 1, quantity_unit: 'pcs',
+  weight: null as number | null, weight_unit: 'kg',
   amount: null as number | null, deposit: null as number | null, customer_paid: null as number | null,
   notes: null as string | null,
 })
@@ -223,6 +178,8 @@ const openEditDialog = () => {
   editForm.subcategory = props.item.subcategory || null
   editForm.quantity = props.item.quantity
   editForm.quantity_unit = props.item.quantity_unit
+  editForm.weight = props.item.weight || null
+  editForm.weight_unit = props.item.weight_unit || 'kg'
   editForm.amount = props.item.amount || null
   editForm.deposit = props.item.deposit || null
   editForm.customer_paid = props.item.customer_paid || null
@@ -232,7 +189,6 @@ const openEditDialog = () => {
 }
 
 const openNewLotDialog = () => { open.value = false; showNewLotDialog.value = true }
-const openNewLotFromDetail = () => { showDetailDialog.value = false; showNewLotDialog.value = true }
 const handleNewLotCreated = () => { showNewLotDialog.value = false; emit('item-updated') }
 
 const triggerEditImageInput = () => editImageInputRef.value?.click()
@@ -251,6 +207,7 @@ const handleUpdate = async () => {
       customer_phone: editForm.customer_phone || null, customer_email: editForm.customer_email,
       category: editForm.category, subcategory: editForm.subcategory,
       quantity: editForm.quantity, quantity_unit: editForm.quantity_unit,
+      weight: editForm.weight, weight_unit: editForm.weight_unit,
       amount: editForm.amount, deposit: editForm.deposit, customer_paid: editForm.customer_paid,
       notes: editForm.notes,
     }

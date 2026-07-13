@@ -13,48 +13,50 @@ import (
 
 func (h *Handler) CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 	type request struct {
-		ProductName   string  `json:"product_name"`
-		StorageName   *string `json:"storage_name"`
-		AccountName   *string `json:"account_name"`
-		LotNumber     *string `json:"lot_number"`
-		CustomerPhone *string `json:"customer_phone"`
-		CustomerEmail *string `json:"customer_email"`
-		Category      *string `json:"category"`
-		Subcategory   *string `json:"subcategory"`
-		QuantityUnit  string  `json:"quantity_unit"`
-		Quantity      int     `json:"quantity"`
-		Amount        float64 `json:"amount"`
-		Deposit       float64 `json:"deposit"`
-		CustomerPaid  float64 `json:"customer_paid"`
-		Notes         *string `json:"notes"`
-		ImageURL      *string `json:"image_url"`
+		ProductName   string   `json:"product_name"`
+		StorageName   *string  `json:"storage_name"`
+		AccountName   *string  `json:"account_name"`
+		LotNumber     *string  `json:"lot_number"`
+		CustomerPhone *string  `json:"customer_phone"`
+		CustomerEmail *string  `json:"customer_email"`
+		Category      *string  `json:"category"`
+		Subcategory   *string  `json:"subcategory"`
+		QuantityUnit  string   `json:"quantity_unit"`
+		Quantity      int      `json:"quantity"`
+		Weight        *float64 `json:"weight"`
+		WeightUnit    *string  `json:"weight_unit"`
+		Amount        float64  `json:"amount"`
+		Deposit       float64  `json:"deposit"`
+		CustomerPaid  float64  `json:"customer_paid"`
+		Notes         *string  `json:"notes"`
+		ImageURL      *string  `json:"image_url"`
 	}
 
 	var req request
-
 	if err := utils.ReadJson(w, r, &req); err != nil {
-		log.Printf("❌ Failed to parse request body: %v", err)
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	// Only product_name is required
 	if req.ProductName == "" {
 		utils.ErrorJson(w, http.StatusBadRequest, "product_name is required")
 		return
 	}
 
-	// Validate quantity unit
-	validUnits := map[string]bool{
-		"bag": true, "bottle": true, "box": true, "can": true, "carton": true,
-		"cup": true, "dozen": true, "gallon": true, "pack": true, "pair": true,
-		"pcs": true, "roll": true, "set": true, "sheet": true, "unit": true,
-	}
+	validUnits := map[string]bool{"bag": true, "bottle": true, "box": true, "can": true, "carton": true, "cup": true, "dozen": true, "gallon": true, "pack": true, "pair": true, "pcs": true, "roll": true, "set": true, "sheet": true, "unit": true}
 	if req.QuantityUnit == "" {
 		req.QuantityUnit = "pcs"
 	} else if !validUnits[req.QuantityUnit] {
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid quantity_unit")
 		return
+	}
+
+	if req.WeightUnit != nil {
+		validWeightUnits := map[string]bool{"mg": true, "g": true, "oz": true, "lb": true, "kg": true, "ton": true}
+		if !validWeightUnits[*req.WeightUnit] {
+			utils.ErrorJson(w, http.StatusBadRequest, "invalid weight_unit")
+			return
+		}
 	}
 
 	if req.Quantity == 0 {
@@ -68,50 +70,25 @@ func (h *Handler) CreateItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	item := &models.Item{
-		UserID:        userID,
-		Notes:         req.Notes,
-		ProductName:   req.ProductName,
-		StorageName:   req.StorageName,
-		AccountName:   req.AccountName,
-		LotNumber:     req.LotNumber,
-		CustomerPhone: req.CustomerPhone,
-		CustomerEmail: req.CustomerEmail,
-		Category:      req.Category,
-		Subcategory:   req.Subcategory,
-		QuantityUnit:  req.QuantityUnit,
-		Quantity:      req.Quantity,
-		Amount:        req.Amount,
-		Deposit:       req.Deposit,
-		CustomerPaid:  req.CustomerPaid,
-		ImageURL:      req.ImageURL,
+		UserID: userID, Notes: req.Notes,
+		ProductName: req.ProductName, StorageName: req.StorageName, AccountName: req.AccountName, LotNumber: req.LotNumber,
+		CustomerPhone: req.CustomerPhone, CustomerEmail: req.CustomerEmail,
+		Category: req.Category, Subcategory: req.Subcategory,
+		QuantityUnit: req.QuantityUnit, Quantity: req.Quantity, Weight: req.Weight, WeightUnit: req.WeightUnit,
+		Amount: req.Amount, Deposit: req.Deposit, CustomerPaid: req.CustomerPaid,
+		ImageURL: req.ImageURL,
 	}
 
 	id, err := h.app.Models.Item.Insert(r.Context(), item)
 	if err != nil {
-		log.Printf("❌ Failed to insert item: %v", err)
+		log.Printf("❌ Failed to insert: %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to create item")
 		return
 	}
 
 	item.ID = id
-
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	description := fmt.Sprintf("Created item: %s", req.ProductName)
-	if req.CustomerPhone != nil && *req.CustomerPhone != "" {
-		description += fmt.Sprintf(" (%s)", *req.CustomerPhone)
-	}
-
-	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
-		UserID:      userID,
-		Action:      "create",
-		Description: description,
-		EntityType:  "items",
-		EntityID:    id,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
+	ip, ua := r.RemoteAddr, r.UserAgent()
+	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{UserID: userID, Action: "create", Description: fmt.Sprintf("Created item: %s", req.ProductName), EntityType: "items", EntityID: id, IPAddress: &ip, UserAgent: &ua})
 	utils.SuccessJson(w, http.StatusCreated, "item created successfully", item)
 }
 
@@ -127,6 +104,8 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 		Subcategory   *string  `json:"subcategory"`
 		QuantityUnit  *string  `json:"quantity_unit"`
 		Quantity      *int     `json:"quantity"`
+		Weight        *float64 `json:"weight"`
+		WeightUnit    *string  `json:"weight_unit"`
 		Amount        *float64 `json:"amount"`
 		Deposit       *float64 `json:"deposit"`
 		CustomerPaid  *float64 `json:"customer_paid"`
@@ -134,23 +113,16 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req request
-
 	if err := utils.ReadJson(w, r, &req); err != nil {
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-
 	if req.ProductName != nil && *req.ProductName == "" {
 		utils.ErrorJson(w, http.StatusBadRequest, "product_name cannot be empty")
 		return
 	}
-
 	if req.QuantityUnit != nil {
-		validUnits := map[string]bool{
-			"bag": true, "bottle": true, "box": true, "can": true, "carton": true,
-			"cup": true, "dozen": true, "gallon": true, "pack": true, "pair": true,
-			"pcs": true, "roll": true, "set": true, "sheet": true, "unit": true,
-		}
+		validUnits := map[string]bool{"bag": true, "bottle": true, "box": true, "can": true, "carton": true, "cup": true, "dozen": true, "gallon": true, "pack": true, "pair": true, "pcs": true, "roll": true, "set": true, "sheet": true, "unit": true}
 		if !validUnits[*req.QuantityUnit] {
 			utils.ErrorJson(w, http.StatusBadRequest, "invalid quantity_unit")
 			return
@@ -208,6 +180,12 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Quantity != nil {
 		updates["quantity"] = *req.Quantity
 	}
+	if req.Weight != nil {
+		updates["weight"] = *req.Weight
+	}
+	if req.WeightUnit != nil {
+		updates["weight_unit"] = *req.WeightUnit
+	}
 	if req.Amount != nil {
 		updates["amount"] = *req.Amount
 	}
@@ -222,31 +200,20 @@ func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(updates) > 1 {
-		err = h.app.Models.Item.UpdateFields(r.Context(), itemID, updates)
-		if err != nil {
+		if err := h.app.Models.Item.UpdateFields(r.Context(), itemID, updates); err != nil {
 			utils.ErrorJson(w, http.StatusInternalServerError, "failed to update item")
 			return
 		}
 	}
 
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
-		UserID:      userID,
-		Action:      "update",
-		Description: fmt.Sprintf("Updated item: %s", existing.ProductName),
-		EntityType:  "items",
-		EntityID:    itemID,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
+	ip, ua := r.RemoteAddr, r.UserAgent()
+	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{UserID: userID, Action: "update", Description: fmt.Sprintf("Updated item: %s", existing.ProductName), EntityType: "items", EntityID: itemID, IPAddress: &ip, UserAgent: &ua})
 
 	updatedItem, err := h.app.Models.Item.GetByID(r.Context(), itemID)
 	if err != nil || updatedItem == nil {
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch updated item")
 		return
 	}
-
 	utils.SuccessJson(w, http.StatusOK, "item updated successfully", updatedItem)
 }
 
@@ -256,13 +223,11 @@ func (h *Handler) GetItemHandler(w http.ResponseWriter, r *http.Request) {
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid parameter")
 		return
 	}
-
 	item, err := h.app.Models.Item.GetByID(r.Context(), itemID)
 	if err != nil || item == nil {
 		utils.ErrorJson(w, http.StatusNotFound, "item not found")
 		return
 	}
-
 	utils.SuccessJson(w, http.StatusOK, "item details fetched", item)
 }
 
@@ -272,11 +237,9 @@ func (h *Handler) GetAllItemsHandler(w http.ResponseWriter, r *http.Request) {
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch items")
 		return
 	}
-
 	if items == nil {
 		items = []models.Item{}
 	}
-
 	utils.SuccessJson(w, http.StatusOK, "items fetched successfully", items)
 }
 
@@ -286,41 +249,21 @@ func (h *Handler) DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
 		utils.ErrorJson(w, http.StatusBadRequest, "invalid item id")
 		return
 	}
-
 	existing, err := h.app.Models.Item.GetByID(r.Context(), itemID)
 	if err != nil || existing == nil {
 		utils.ErrorJson(w, http.StatusNotFound, "item not found")
 		return
 	}
-
 	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
 	if !ok {
 		utils.ErrorJson(w, http.StatusUnauthorized, "invalid user context")
 		return
 	}
-
-	err = h.app.Models.Item.Delete(r.Context(), itemID)
-	if err != nil {
+	if err := h.app.Models.Item.Delete(r.Context(), itemID); err != nil {
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to delete item")
 		return
 	}
-
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	description := fmt.Sprintf("Deleted item: %s", existing.ProductName)
-	if existing.CustomerPhone != nil && *existing.CustomerPhone != "" {
-		description += fmt.Sprintf(" (%s)", *existing.CustomerPhone)
-	}
-
-	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{
-		UserID:      userID,
-		Action:      "delete",
-		Description: description,
-		EntityType:  "items",
-		EntityID:    itemID,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
+	ip, ua := r.RemoteAddr, r.UserAgent()
+	_, _ = h.app.Models.Log.Insert(context.Background(), &models.Log{UserID: userID, Action: "delete", Description: fmt.Sprintf("Deleted item: %s", existing.ProductName), EntityType: "items", EntityID: itemID, IPAddress: &ip, UserAgent: &ua})
 	utils.SuccessJson(w, http.StatusOK, "item deleted successfully", nil)
 }

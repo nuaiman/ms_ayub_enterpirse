@@ -39,7 +39,7 @@
             <AutocompleteField v-model="category" label="Category" placeholder="e.g. electronics, furniture..." :suggestions="categorySuggestions" />
             <AutocompleteField v-model="subcategory" label="Subcategory" placeholder="e.g. laptop, sofa..." :suggestions="subcategorySuggestions" />
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-primary">Quantity</label>
               <div class="flex items-center gap-2">
@@ -49,6 +49,19 @@
               </div>
             </div>
             <div class="space-y-1.5"><label class="text-sm font-medium text-primary">Unit</label><select v-model="quantity_unit" class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"><option value="bag">Bag</option><option value="bottle">Bottle</option><option value="box">Box</option><option value="can">Can</option><option value="carton">Carton</option><option value="cup">Cup</option><option value="dozen">Dozen</option><option value="gallon">Gallon</option><option value="pack">Pack</option><option value="pair">Pair</option><option value="pcs">Pieces</option><option value="roll">Roll</option><option value="set">Set</option><option value="sheet">Sheet</option><option value="unit">Unit</option></select></div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Weight</label>
+              <input v-model.number="weight" type="number" step="0.001" min="0" placeholder="0.000"
+                class="input w-full px-3 py-2 rounded-lg placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-primary">Weight Unit</label>
+              <select v-model="weight_unit" class="input w-full px-3 py-2 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                <option value="kg">kg</option><option value="g">g</option><option value="mg">mg</option><option value="oz">oz</option><option value="lb">lb</option><option value="ton">ton</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -105,12 +118,8 @@ import AutocompleteField from '@/components/ui/AutocompleteField.vue'
 
 const props = defineProps<{
   prefill?: {
-    product_name?: string
-    storage_name?: string | null
-    account_name?: string | null
-    lot_number?: string | null
-    customer_phone?: string | null
-    customer_email?: string | null
+    product_name?: string; storage_name?: string | null; account_name?: string | null
+    lot_number?: string | null; customer_phone?: string | null; customer_email?: string | null
     quantity_unit?: string
   }
 }>()
@@ -129,6 +138,8 @@ const category = ref('')
 const subcategory = ref('')
 const quantity = ref(1)
 const quantity_unit = ref('pcs')
+const weight = ref<number | null>(null)
+const weight_unit = ref('kg')
 const amount = ref<number | null>(null)
 const deposit = ref<number | null>(null)
 const customer_paid = ref<number | null>(null)
@@ -168,6 +179,7 @@ const resetForm = () => {
   customer_phone.value = ''; customer_email.value = ''
   category.value = ''; subcategory.value = ''
   quantity.value = 1; quantity_unit.value = 'pcs'
+  weight.value = null; weight_unit.value = 'kg'
   amount.value = null; deposit.value = null; customer_paid.value = null
   notes.value = ''; removeImage()
   if (props.prefill) {
@@ -195,6 +207,9 @@ const submit = async () => {
       subcategory: subcategory.value.trim().toLowerCase() || null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       quantity_unit: quantity_unit.value as any, quantity: quantity.value,
+      weight: weight.value || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      weight_unit: weight_unit.value as any,
       amount: amount.value || 0, deposit: deposit.value || 0, customer_paid: customer_paid.value || 0,
       notes: notes.value || null,
     }
